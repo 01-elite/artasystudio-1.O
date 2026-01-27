@@ -1,135 +1,125 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Heart, UserPlus, X, Eye, ShoppingCart } from 'lucide-react';
+import { Heart, X, Gavel, Info } from 'lucide-react';
 
 const Explore = () => {
     const [artworks, setArtworks] = useState([]);
     const [selectedArt, setSelectedArt] = useState(null);
+    const [bidAmount, setBidAmount] = useState("");
     const user = JSON.parse(localStorage.getItem('user')) || {};
 
-    useEffect(() => {
+    const fetchData = () => {
         axios.get('http://localhost:5001/api/art/explore').then(res => setArtworks(res.data));
-    }, []);
-
-    // Replace your handleLike function in Explore.jsx with this:
-const handleLike = async (e, artId) => {
-    e.stopPropagation(); 
-    
-    // 1. Re-fetch current user from storage to ensure we are logged in
-    const activeUser = JSON.parse(localStorage.getItem('user'));
-
-    if (!activeUser || !activeUser._id) {
-        alert("Login to like masterpieces!");
-        return;
-    }
-
-    try {
-        // 2. Call the backend route we added to authRoutes.js
-        const { data } = await axios.put('http://localhost:5001/api/auth/like-art', {
-            userId: activeUser._id,
-            artId: artId
-        });
-        
-        // 3. Update Local Storage so the UI knows this item is now liked
-        localStorage.setItem('user', JSON.stringify(data));
-        
-        // 4. Force a quick state update or reload to show the red heart
-        alert("Added to your Liked Collection!");
-        window.location.reload(); 
-    } catch (err) {
-        console.error("Like Error:", err);
-        alert("Action failed. Check if your backend is running.");
-    }
-};
-
-    const handleFollow = async (creatorId) => {
-        try {
-            const { data } = await axios.put('http://localhost:5001/api/auth/follow', {
-                followerId: user._id,
-                followingId: creatorId
-            });
-            localStorage.setItem('user', JSON.stringify(data.user));
-            alert("Following artist!");
-        } catch (err) { alert("Login to follow artists"); }
     };
 
-    return (
-        <div className="p-8 bg-white min-h-screen font-sans">
-            <h2 className="text-3xl font-black mb-10 tracking-tight">Explore <span className="text-[#FF8C00]">Gallery</span></h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {artworks.map((art) => (
-                    <div key={art._id} onClick={() => setSelectedArt(art)} className="group relative cursor-pointer">
-                        {/* --- THE ART CARD --- */}
-                        <div className="relative rounded-[2rem] overflow-hidden aspect-square shadow-sm hover:shadow-2xl transition-all duration-500">
-                            <img src={art.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={art.title} />
-                            
-                            {/* --- THE HEART SYMBOL (TOP RIGHT) --- */}
-                            <button 
-                                onClick={(e) => handleLike(e, art._id)}
-                                className="absolute top-5 right-5 z-10 p-3 bg-white/80 backdrop-blur-md rounded-2xl text-gray-400 hover:text-red-500 transition-colors shadow-sm"
-                            >
-                                <Heart size={20} fill={user.likedArt?.includes(art._id) ? "currentColor" : "none"} className={user.likedArt?.includes(art._id) ? "text-red-500" : ""} />
-                            </button>
+    useEffect(() => { fetchData(); }, []);
 
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-8 text-white">
-                                <p className="font-black text-2xl">{art.title}</p>
-                                <p className="text-sm font-bold opacity-80">By {art.creator?.name || "ArtVista Artist"}</p>
+    const handleBid = async () => {
+        if (!user._id) return alert("Login to place a bid!");
+        try {
+            await axios.put(`http://localhost:5001/api/art/bid/${selectedArt._id}`, {
+                userId: user._id, amount: Number(bidAmount)
+            });
+            alert("Bid Placed Successfully!");
+            setBidAmount("");
+            fetchData();
+            setSelectedArt(null);
+        } catch (err) { alert(err.response.data.message); }
+    };
+
+    const auctions = artworks.filter(a => a.isAuction);
+    const gallery = artworks.filter(a => !a.isAuction);
+
+    return (
+        <div className="max-w-7xl mx-auto p-6 bg-white min-h-screen font-sans text-left">
+            {/* --- AUCTION BOOTH --- */}
+            {auctions.length > 0 && (
+                <div id="auction-booth" className="mb-16">
+                    <div className="flex items-center gap-3 mb-8">
+                        <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_red]"></div>
+                        <h2 className="text-2xl font-black uppercase tracking-tighter text-red-600 italic">Live Auction Booth</h2>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                        {auctions.map(art => (
+                            <div key={art._id} onClick={() => setSelectedArt(art)} className="group relative bg-white border border-red-100 rounded-[2rem] p-3 hover:shadow-2xl transition-all cursor-pointer">
+                                <div className="aspect-square rounded-[1.5rem] overflow-hidden mb-4 relative">
+                                    <img src={art.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="art" />
+                                    <div className="absolute inset-0 bg-red-600/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <button className="bg-white text-red-600 font-black px-6 py-2 rounded-full text-xs shadow-xl">BID ON THIS</button>
+                                    </div>
+                                </div>
+                                <div className="px-2 pb-2">
+                                    <p className="font-black text-gray-800 text-sm truncate mb-1">{art.title}</p>
+                                    <div className="flex justify-between items-center">
+                                        <p className="text-[10px] font-black text-red-500 uppercase tracking-widest">Current Bid</p>
+                                        <p className="font-black text-red-600 text-lg">${art.highestBid || art.price}</p>
+                                    </div>
+                                </div>
                             </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <hr className="border-gray-50 mb-12" />
+
+            {/* --- REGULAR GALLERY --- */}
+            <h2 className="text-xl font-black mb-8 uppercase tracking-tight">Public <span className="text-[#FF8C00]">Gallery</span></h2>
+            <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-3">
+                {gallery.map(art => (
+                    <div key={art._id} onClick={() => setSelectedArt(art)} className="group relative aspect-square rounded-xl overflow-hidden bg-gray-50 cursor-pointer">
+                        <img src={art.image} className="w-full h-full object-cover group-hover:scale-105 transition-all" alt="gallery" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                            <p className="text-white font-bold text-[10px] truncate">{art.title}</p>
                         </div>
                     </div>
                 ))}
             </div>
 
-            {/* --- POST MODAL (Remains the same as your previous code) --- */}
+            {/* --- AUCTION / DETAIL MODAL --- */}
             {selectedArt && (
                 <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4">
-                    <button onClick={() => setSelectedArt(null)} className="absolute top-10 right-10 text-white hover:rotate-90 transition-transform">
-                        <X size={40} />
-                    </button>
-                    
-                    <div className="bg-white max-w-5xl w-full rounded-[3rem] overflow-hidden flex flex-col md:flex-row h-[80vh] shadow-2xl">
-                        <div className="flex-1 bg-gray-50 flex items-center justify-center border-r border-gray-100 p-4">
-                            <img src={selectedArt.image} className="w-full h-full object-contain" alt="preview" />
+                    <button onClick={() => setSelectedArt(null)} className="absolute top-10 right-10 text-white"><X size={40} /></button>
+                    <div className="bg-white max-w-5xl w-full rounded-[3rem] overflow-hidden flex flex-col md:flex-row h-[85vh] shadow-2xl">
+                        <div className="flex-1 bg-gray-100 flex items-center justify-center p-8">
+                            <img src={selectedArt.image} className="w-full h-full object-contain rounded-2xl" alt="preview" />
                         </div>
-
-                        <div className="w-full md:w-[450px] p-10 flex flex-col">
-                            <div className="flex items-center justify-between mb-8 pb-6 border-b border-gray-50">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-12 h-12 bg-[#FF8C00] rounded-2xl flex items-center justify-center text-white font-black text-xl">{selectedArt.creator?.name?.[0]}</div>
-                                    <div>
-                                        <p className="font-black text-gray-800 leading-none">{selectedArt.creator?.name}</p>
-                                        <p className="text-[10px] text-gray-400 font-bold uppercase mt-1 tracking-widest">Verified Artist</p>
+                        <div className="w-full md:w-[450px] p-10 flex flex-col bg-white">
+                            <h3 className="text-4xl font-black mb-4">{selectedArt.title}</h3>
+                            
+                            {selectedArt.isAuction ? (
+                                <div className="flex-1 overflow-hidden flex flex-col">
+                                    <div className="bg-red-50 p-6 rounded-[2rem] border border-red-100 mb-6">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <p className="text-xs font-black text-red-400 uppercase">Highest Bidder</p>
+                                            <div className="bg-red-500 w-2 h-2 rounded-full animate-ping"></div>
+                                        </div>
+                                        <p className="text-4xl font-black text-red-600">${selectedArt.highestBid}</p>
+                                    </div>
+                                    <p className="text-[10px] font-black text-gray-300 uppercase mb-3 tracking-widest">Recent Bids</p>
+                                    <div className="flex-1 overflow-y-auto space-y-3 mb-6 pr-2">
+                                        {selectedArt.bids?.map((bid, i) => (
+                                            <div key={i} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                                                <span className="font-bold text-xs text-gray-700">{bid.bidder?.name}</span>
+                                                <span className="font-black text-red-500 text-sm">${bid.amount}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="flex gap-2 p-2 bg-gray-100 rounded-2xl">
+                                        <input type="number" placeholder="Enter bid amount..." className="flex-1 bg-transparent px-4 py-3 font-black text-sm outline-none" value={bidAmount} onChange={(e) => setBidAmount(e.target.value)} />
+                                        <button onClick={handleBid} className="bg-red-600 text-white px-8 py-3 rounded-xl font-black text-xs hover:bg-red-700 transition">PLACE BID</button>
                                     </div>
                                 </div>
-                                <button onClick={() => handleFollow(selectedArt.creator?._id)} className="text-[#FF8C00] font-black text-xs bg-orange-50 px-4 py-2 rounded-xl hover:bg-orange-100 transition">
-                                    + FOLLOW
-                                </button>
-                            </div>
-
-                            <div className="flex-1">
-                                <h3 className="text-3xl font-black mb-3">{selectedArt.title}</h3>
-                                <p className="text-gray-500 text-sm font-medium leading-relaxed mb-6 italic">"{selectedArt.description}"</p>
-                                <div className="flex gap-2">
-                                    <span className="bg-gray-100 px-4 py-1.5 rounded-full text-[10px] font-black text-gray-500 uppercase tracking-widest">{selectedArt.category}</span>
-                                </div>
-                            </div>
-
-                            <div className="pt-8 border-t border-gray-100">
-                                <div className="flex justify-between items-end mb-6">
-                                    <div>
-                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Current Value</p>
-                                        <p className="text-4xl font-black text-gray-900">${selectedArt.price}</p>
-                                    </div>
-                                    <div className="flex gap-3 text-gray-300">
-                                        <Heart size={24} className="hover:text-red-500 cursor-pointer transition" onClick={(e) => handleLike(e, selectedArt._id)} />
-                                        <Eye size={24} />
+                            ) : (
+                                <div className="flex-1 flex flex-col justify-between">
+                                    <p className="text-gray-500 font-medium italic mb-10">"{selectedArt.description}"</p>
+                                    <div className="pt-10 border-t">
+                                        <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Buy Now Price</p>
+                                        <p className="text-5xl font-black mb-8">${selectedArt.price}</p>
+                                        <button className="w-full bg-black text-white py-5 rounded-[1.5rem] font-black text-xl hover:bg-orange-500 shadow-xl transition-all">COLLECT NOW</button>
                                     </div>
                                 </div>
-                                <button className="w-full bg-black text-white py-5 rounded-[1.5rem] font-black text-lg hover:bg-[#FF8C00] shadow-xl shadow-orange-100 transition-all">
-                                    COLLECT NOW
-                                </button>
-                            </div>
+                            )}
                         </div>
                     </div>
                 </div>

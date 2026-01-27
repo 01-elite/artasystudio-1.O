@@ -1,56 +1,120 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { ShoppingCart, User, PlusSquare, LayoutDashboard } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { 
+  ShoppingCart, MoreVertical, LayoutDashboard, 
+  UserCircle, Repeat, LogOut, Gavel, LogIn, UserPlus, PlusSquare 
+} from 'lucide-react';
 
-const Navbar = ({ user, role }) => {
+const Navbar = ({ user, role, onLogout }) => {
   const [cartCount, setCartCount] = useState(0);
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef(null);
+  const navigate = useNavigate();
 
-  // Listen for cart changes every time the navbar renders or localStorage updates
+  // 1. Sync Cart Count
   useEffect(() => {
     const updateCart = () => {
       const cart = JSON.parse(localStorage.getItem('cart')) || [];
       setCartCount(cart.length);
     };
     updateCart();
-    window.addEventListener('storage', updateCart); // Syncs across tabs
-    return () => window.removeEventListener('storage', updateCart);
+    window.addEventListener('storage', updateCart);
+    
+    // 2. Close menu when clicking outside
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      window.removeEventListener('storage', updateCart);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
+  // Your requested list items
+  const menuItems = [
+    { label: 'View Profile', icon: <UserCircle size={18}/>, path: '/profile', show: !!user },
+    { label: 'View Dashboard', icon: <LayoutDashboard size={18}/>, path: '/dashboard', show: role === 'creator' },
+    { label: 'Active Bids', icon: <Gavel size={18}/>, path: '/dashboard', show: role === 'creator' },
+    { label: 'Switch Profile', icon: <Repeat size={18}/>, path: '/profile', show: !!user },
+  ];
+
   return (
-    <nav className="flex items-center justify-between px-10 py-6 border-b border-gray-100 bg-white sticky top-0 z-50">
+    <nav className="flex items-center justify-between px-10 py-6 border-b border-gray-100 bg-white sticky top-0 z-50 font-sans">
       <Link to="/" className="text-2xl font-black tracking-tighter">
         ART<span className="text-[#FF8C00]">VISTA</span>
       </Link>
 
-      <div className="flex items-center gap-8 font-medium text-gray-600">
+      {/* Main Nav Links */}
+      <div className="flex items-center gap-8 font-bold text-xs text-gray-400 uppercase tracking-widest">
         <Link to="/" className="hover:text-[#FF8C00] transition">Explore</Link>
-        
         {role === 'creator' && (
-          <>
-            <Link to="/upload" className="flex items-center gap-1 hover:text-[#FF8C00]">
-              <PlusSquare size={18}/> Upload
-            </Link>
-            <Link to="/dashboard" className="flex items-center gap-1 hover:text-[#FF8C00]">
-              <LayoutDashboard size={18}/> Dashboard
-            </Link>
-          </>
+          <Link to="/upload" className="flex items-center gap-1 text-[#FF8C00]">
+            <PlusSquare size={16}/> Upload
+          </Link>
         )}
       </div>
 
       <div className="flex items-center gap-5">
-        {/* FIXED: Wrapped in Link and using dynamic cartCount */}
-        <Link to="/cart" className="relative cursor-pointer hover:text-[#FF8C00] transition">
-          <ShoppingCart size={24} />
+        {/* Shopping Cart */}
+        <Link to="/cart" className="relative cursor-pointer hover:text-[#FF8C00] transition p-2">
+          <ShoppingCart size={22} />
           {cartCount > 0 && (
-            <span className="absolute -top-2 -right-2 bg-[#FF8C00] text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+            <span className="absolute top-0 right-0 bg-[#FF8C00] text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-black border-2 border-white">
               {cartCount}
             </span>
           )}
         </Link>
-        
-        <Link to="/profile" className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center hover:border-2 hover:border-[#FF8C00] transition">
-          <User size={20} />
-        </Link>
+
+        {/* --- THREE DOT MENU --- */}
+        <div className="relative" ref={menuRef}>
+          <button 
+            onClick={() => setIsOpen(!isOpen)}
+            className={`p-2 rounded-full transition-colors ${isOpen ? 'bg-orange-50 text-[#FF8C00]' : 'hover:bg-gray-50 text-gray-600'}`}
+          >
+            <MoreVertical size={22} />
+          </button>
+
+          {isOpen && (
+            <div className="absolute right-0 mt-4 w-60 bg-white border border-gray-100 rounded-[2rem] shadow-2xl py-4 z-[100] overflow-hidden">
+              <div className="px-6 py-2 mb-2 border-b border-gray-50">
+                <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em]">Studio Menu</p>
+              </div>
+
+              {menuItems.map((item, i) => item.show && (
+                <button
+                  key={i}
+                  onClick={() => { navigate(item.path); setIsOpen(false); }}
+                  className="w-full flex items-center gap-4 px-6 py-3.5 text-sm font-bold text-gray-600 hover:bg-orange-50 hover:text-[#FF8C00] transition-all"
+                >
+                  <span className="opacity-70">{item.icon}</span> {item.label}
+                </button>
+              ))}
+
+              <div className="h-[1px] bg-gray-50 my-2 mx-4"></div>
+
+              {user ? (
+                <button 
+                  onClick={() => { onLogout(); setIsOpen(false); }}
+                  className="w-full flex items-center gap-4 px-6 py-3.5 text-sm font-bold text-red-500 hover:bg-red-50 transition-all"
+                >
+                  <LogOut size={18}/> Logout
+                </button>
+              ) : (
+                <div className="space-y-1">
+                  <Link to="/login" onClick={() => setIsOpen(false)} className="flex items-center gap-4 px-6 py-3.5 text-sm font-bold text-gray-600 hover:bg-gray-50">
+                    <LogIn size={18}/> Sign In
+                  </Link>
+                  <Link to="/login" onClick={() => setIsOpen(false)} className="flex items-center gap-4 px-6 py-3.5 text-sm font-bold text-[#FF8C00] hover:bg-orange-50">
+                    <UserPlus size={18}/> Sign Up
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </nav>
   );

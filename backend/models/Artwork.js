@@ -13,7 +13,16 @@ const artworkSchema = new mongoose.Schema({
     isCustomizable: { type: Boolean, default: false },
     creator: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     likes: { type: Number, default: 0 },
-    views: { type: Number, default: 0 }
+    views: { type: Number, default: 0 },
+    
+    // ✅ Auction Specific Fields
+    isAuction: { type: Boolean, default: false },
+    highestBid: { type: Number, default: 0 },
+    bids: [{
+        bidder: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        amount: { type: Number },
+        time: { type: Date, default: Date.now }
+    }]
 }, { timestamps: true });
 
 module.exports = mongoose.model('Artwork', artworkSchema);
