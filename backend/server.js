@@ -12,7 +12,7 @@ const app = express();
 app.use(express.json());
 
 // ✅ Allow local and future production frontend
-const allowedOrigins = ['http://localhost:3000', 'https://artasystudio.onrender.com'];
+const allowedOrigins = ['http://localhost:3000', 'https://artasystudio-frontend.onrender.com'];
 app.use(cors({
     origin: function (origin, callback) {
         if (!origin || allowedOrigins.indexOf(origin) !== -1) {
