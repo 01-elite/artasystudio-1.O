@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { TrendingUp, Users, Eye, Palette, ExternalLink, MessageCircle, ShoppingBag, DollarSign, Gavel } from 'lucide-react';
+import { TrendingUp, Users, Eye, ExternalLink, MessageCircle, DollarSign, Gavel } from 'lucide-react';
 
 const Dashboard = () => {
     const user = JSON.parse(localStorage.getItem('user')) || {};
@@ -13,15 +13,12 @@ const Dashboard = () => {
         const fetchDashboardData = async () => {
             if (!user._id) return;
             try {
-                // 1. Fetching all my art
                 const artRes = await axios.get(`http://localhost:5001/api/art/user/${user._id}`);
                 const allPosts = artRes.data;
                 
-                // Aggregating Stats
                 const totalLikes = allPosts.reduce((acc, curr) => acc + (curr.likes || 0), 0);
                 const totalViews = allPosts.reduce((acc, curr) => acc + (curr.views || 0), 0);
                 
-                // Logic for Auctions vs Regular Posts
                 const activeAuctions = allPosts.filter(art => art.isAuction && art.bids?.length > 0);
                 setMyAuctions(activeAuctions);
 
@@ -33,7 +30,6 @@ const Dashboard = () => {
                     revenue: allPosts.filter(a => a.isSold).reduce((acc, curr) => acc + Number(curr.price), 0) 
                 });
 
-                // 2. Fetching community data (populated names)
                 const followerRes = await axios.get(`http://localhost:5001/api/auth/followers/${user._id}`);
                 setFollowers(followerRes.data);
                 
@@ -64,7 +60,6 @@ const Dashboard = () => {
                 <div className="text-[10px] font-black text-gray-300 uppercase">Live Dashboard</div>
             </div>
             
-            {/* STATS GRID */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-10">
                 {statCards.map((stat, i) => (
                     <div key={i} className="p-4 rounded-2xl border border-gray-50 bg-white hover:shadow-md transition-all">
@@ -77,7 +72,6 @@ const Dashboard = () => {
                 ))}
             </div>
 
-            {/* ACTIVE AUCTION MONITOR */}
             <div className="mb-10">
                 <div className="flex items-center justify-between mb-4">
                     <h3 className="text-[11px] font-black uppercase tracking-widest text-gray-400">Active Bids on My Art</h3>
@@ -105,7 +99,6 @@ const Dashboard = () => {
                 )}
             </div>
 
-            {/* COMMUNITY (Supporters) */}
             <div>
                 <h3 className="text-[11px] font-black uppercase tracking-widest text-gray-400 mb-4">Community</h3>
                 <div className="grid grid-cols-1 gap-2">
@@ -123,7 +116,6 @@ const Dashboard = () => {
                             <ExternalLink size={14} className="text-gray-300" />
                         </div>
                     ))}
-                    
                     {followers.length === 0 && (
                         <div className="p-10 text-center bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
                             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Growth in progress...</p>

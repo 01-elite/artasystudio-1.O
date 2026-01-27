@@ -11,7 +11,6 @@ const Navbar = ({ user, role, onLogout }) => {
   const menuRef = useRef(null);
   const navigate = useNavigate();
 
-  // 1. Sync Cart Count
   useEffect(() => {
     const updateCart = () => {
       const cart = JSON.parse(localStorage.getItem('cart')) || [];
@@ -20,7 +19,6 @@ const Navbar = ({ user, role, onLogout }) => {
     updateCart();
     window.addEventListener('storage', updateCart);
     
-    // 2. Close menu when clicking outside
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
         setIsOpen(false);
@@ -33,12 +31,30 @@ const Navbar = ({ user, role, onLogout }) => {
     };
   }, []);
 
-  // Your requested list items
+  const handleSwitchProfile = () => {
+    const storedUser = JSON.parse(localStorage.getItem('user'));
+    if (!storedUser) return;
+
+    const newRole = storedUser.role === 'creator' ? 'user' : 'creator';
+    const updatedUser = { ...storedUser, role: newRole };
+
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+    setIsOpen(false);
+    alert(`Switched to ${newRole.toUpperCase()} account`);
+    window.location.reload(); 
+  };
+
   const menuItems = [
-    { label: 'View Profile', icon: <UserCircle size={18}/>, path: '/profile', show: !!user },
-    { label: 'View Dashboard', icon: <LayoutDashboard size={18}/>, path: '/dashboard', show: role === 'creator' },
-    { label: 'Active Bids', icon: <Gavel size={18}/>, path: '/dashboard', show: role === 'creator' },
-    { label: 'Switch Profile', icon: <Repeat size={18}/>, path: '/profile', show: !!user },
+    { label: 'View Profile', icon: <UserCircle size={18}/>, path: '/profile', show: !!user, action: null },
+    { label: 'View Dashboard', icon: <LayoutDashboard size={18}/>, path: '/dashboard', show: role === 'creator', action: null },
+    { label: 'Active Bids', icon: <Gavel size={18}/>, path: '/dashboard', show: role === 'creator', action: null },
+    { 
+      label: `Switch to ${role === 'creator' ? 'User' : 'Creator'}`, 
+      icon: <Repeat size={18}/>, 
+      path: null, 
+      show: !!user, 
+      action: handleSwitchProfile 
+    },
   ];
 
   return (
@@ -47,7 +63,6 @@ const Navbar = ({ user, role, onLogout }) => {
         ART<span className="text-[#FF8C00]">VISTA</span>
       </Link>
 
-      {/* Main Nav Links */}
       <div className="flex items-center gap-8 font-bold text-xs text-gray-400 uppercase tracking-widest">
         <Link to="/" className="hover:text-[#FF8C00] transition">Explore</Link>
         {role === 'creator' && (
@@ -58,7 +73,6 @@ const Navbar = ({ user, role, onLogout }) => {
       </div>
 
       <div className="flex items-center gap-5">
-        {/* Shopping Cart */}
         <Link to="/cart" className="relative cursor-pointer hover:text-[#FF8C00] transition p-2">
           <ShoppingCart size={22} />
           {cartCount > 0 && (
@@ -68,7 +82,6 @@ const Navbar = ({ user, role, onLogout }) => {
           )}
         </Link>
 
-        {/* --- THREE DOT MENU --- */}
         <div className="relative" ref={menuRef}>
           <button 
             onClick={() => setIsOpen(!isOpen)}
@@ -86,7 +99,14 @@ const Navbar = ({ user, role, onLogout }) => {
               {menuItems.map((item, i) => item.show && (
                 <button
                   key={i}
-                  onClick={() => { navigate(item.path); setIsOpen(false); }}
+                  onClick={() => { 
+                    if (item.action) {
+                      item.action();
+                    } else {
+                      navigate(item.path); 
+                      setIsOpen(false); 
+                    }
+                  }}
                   className="w-full flex items-center gap-4 px-6 py-3.5 text-sm font-bold text-gray-600 hover:bg-orange-50 hover:text-[#FF8C00] transition-all"
                 >
                   <span className="opacity-70">{item.icon}</span> {item.label}

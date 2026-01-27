@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 const ProfileToggle = ({ currentRole, onToggle }) => {
   return (
@@ -16,3 +16,5 @@ const ProfileToggle = ({ currentRole, onToggle }) => {
     </div>
   );
 };
+
+export default ProfileToggle;

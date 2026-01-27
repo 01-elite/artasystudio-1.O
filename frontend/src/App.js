@@ -6,7 +6,6 @@ import UploadArt from './pages/UploadArt';
 import Profile from './pages/Profile';
 import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
-// In App.js
 import Cart from './pages/Cart';
 
 
@@ -29,9 +28,7 @@ function App() {
           <Route path="/profile" element={user ? <Profile /> : <Navigate to="/login" />} />
           <Route path="/dashboard" element={user?.role === 'creator' ? <Dashboard user={user} /> : <Navigate to="/profile" />} />
           <Route path="/upload" element={user?.role === 'creator' ? <UploadArt /> : <Navigate to="/profile" />} />
-         
-<Route path="/cart" element={<Cart />} />
-
+          <Route path="/cart" element={<Cart />} />
         </Routes>
       </div>
     </Router>
