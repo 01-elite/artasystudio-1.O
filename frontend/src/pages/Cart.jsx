@@ -95,7 +95,7 @@ const Cart = () => {
                     </div>
                     <button 
                         onClick={() => alert("Redirecting to Secure Payment Gateway...")}
-                        className="w-full bg-[#FFD814] hover:bg-[#F7CA00] text-gray-900 py-3 rounded-full font-bold text-sm shadow-sm border border-[#F2C200] transition-colors mb-3"
+                        className="w-full bg-[#FF8C00] hover:bg-orange-600 text-white py-3 rounded-full font-bold text-sm shadow-sm border border-[#F2C200] transition-colors mb-3"
                     >
                         Proceed to Checkout
                     </button>
