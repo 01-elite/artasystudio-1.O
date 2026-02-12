@@ -1,13 +1,21 @@
 const express = require('express');
 const router = express.Router();
 const Artwork = require('../models/Artwork');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('../config/cloudinary');
 const multer = require('multer');
 
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, 'uploads/'),
-    filename: (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'artworks',
+        allowed_formats: ['jpg', 'png', 'jpeg'],
+    },
 });
+
 const upload = multer({ storage });
+
 
 router.get('/explore', async (req, res) => {
     try {
@@ -49,16 +57,25 @@ router.put('/view/:artId', async (req, res) => {
 router.post('/upload', upload.single('image'), async (req, res) => {
     try {
         const { title, price, description, category, creatorId, isAuction } = req.body;
+
         const newArt = await Artwork.create({
-            title, price, description, category,
-            creator: creatorId, 
+            title,
+            price,
+            description,
+            category,
+            creator: creatorId,
             isAuction: isAuction === 'true',
             highestBid: isAuction === 'true' ? price : 0,
-            image: `http://localhost:5001/uploads/${req.file.filename}`
+            image: req.file.path,        // Cloudinary URL
+            public_id: req.file.filename // Cloudinary public_id
         });
+
         res.status(201).json(newArt);
-    } catch (err) { res.status(400).json({ message: err.message }); }
+    } catch (err) {
+        res.status(400).json({ message: err.message });
+    }
 });
+
 
 router.get('/user/:userId', async (req, res) => {
     try {
