@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   ShoppingCart, MoreVertical, LayoutDashboard, 
-  UserCircle, Repeat, LogOut, Gavel, LogIn, UserPlus, PlusSquare 
+  UserCircle, Repeat, LogOut, Gavel, LogIn, UserPlus, PlusSquare, Package 
 } from 'lucide-react';
 
 const Navbar = ({ user, role, onLogout }) => {
@@ -34,10 +34,8 @@ const Navbar = ({ user, role, onLogout }) => {
   const handleSwitchProfile = () => {
     const storedUser = JSON.parse(localStorage.getItem('user'));
     if (!storedUser) return;
-
     const newRole = storedUser.role === 'creator' ? 'user' : 'creator';
     const updatedUser = { ...storedUser, role: newRole };
-
     localStorage.setItem('user', JSON.stringify(updatedUser));
     setIsOpen(false);
     alert(`Switched to ${newRole.toUpperCase()} account`);
@@ -46,6 +44,7 @@ const Navbar = ({ user, role, onLogout }) => {
 
   const menuItems = [
     { label: 'View Profile', icon: <UserCircle size={18}/>, path: '/profile', show: !!user, action: null },
+    { label: 'My Orders', icon: <Package size={18}/>, path: '/orders', show: !!user, action: null }, // ✅ Added Orders
     { label: 'View Dashboard', icon: <LayoutDashboard size={18}/>, path: '/dashboard', show: role === 'creator', action: null },
     { label: 'Active Bids', icon: <Gavel size={18}/>, path: '/dashboard', show: role === 'creator', action: null },
     { 
@@ -63,7 +62,7 @@ const Navbar = ({ user, role, onLogout }) => {
         ART<span className="text-[#FF8C00]">VISTA</span>
       </Link>
 
-      <div className="flex items-center gap-8 font-bold text-xs text-gray-400 uppercase tracking-widest">
+      <div className="flex items-center gap-8 font-bold text-xs text-gray-400 uppercase tracking-widest text-left">
         <Link to="/" className="hover:text-[#FF8C00] transition">Explore</Link>
         {role === 'creator' && (
           <Link to="/upload" className="flex items-center gap-1 text-[#FF8C00]">
@@ -92,7 +91,7 @@ const Navbar = ({ user, role, onLogout }) => {
 
           {isOpen && (
             <div className="absolute right-0 mt-4 w-60 bg-white border border-gray-100 rounded-[2rem] shadow-2xl py-4 z-[100] overflow-hidden">
-              <div className="px-6 py-2 mb-2 border-b border-gray-50">
+              <div className="px-6 py-2 mb-2 border-b border-gray-50 text-left">
                 <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em]">Studio Menu</p>
               </div>
 
@@ -113,7 +112,7 @@ const Navbar = ({ user, role, onLogout }) => {
                 </button>
               ))}
 
-              <div className="h-[1px] bg-gray-50 my-2 mx-4"></div>
+              <div className="h-[1px] bg-gray-50 my-2 mx-4 text-left"></div>
 
               {user ? (
                 <button 

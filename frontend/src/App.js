@@ -7,6 +7,7 @@ import Profile from './pages/Profile';
 import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
 import Cart from './pages/Cart';
+import Orders from './pages/Orders'; // ✅ New Import
 import PaymentSucess from './components/PaymentSucess';
 
 function App() {
@@ -32,26 +33,19 @@ function App() {
         <Navbar user={user} role={user?.role} onLogout={handleLogout} />
         
         <Routes>
-          {/* Main Gallery */}
           <Route path="/" element={<Explore />} />
-          
-          {/* Auth */}
           <Route path="/login" element={!user ? <Auth /> : <Navigate to="/profile" />} />
-          
-          {/* ✅ FIXED: Combined Profile Routes 
-              The ":userId?" syntax makes the ID optional.
-              - /profile         -> Shows your profile
-              - /profile/123...  -> Shows another artist's profile
-          */}
           <Route 
             path="/profile/:userId?" 
             element={user ? <Profile /> : <Navigate to="/login" />} 
           />
-          
-          {/* Role Protected Routes */}
           <Route 
             path="/dashboard" 
             element={user?.role === 'creator' ? <Dashboard /> : <Navigate to="/profile" />} 
+          />
+          <Route 
+            path="/orders" 
+            element={user ? <Orders /> : <Navigate to="/login" />} 
           />
           <Route
             path="/payment-success"
@@ -61,10 +55,7 @@ function App() {
             path="/upload" 
             element={user?.role === 'creator' ? <UploadArt /> : <Navigate to="/profile" />} 
           />
-          
           <Route path="/cart" element={<Cart />} />
-
-          {/* Fallback for undefined routes */}
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </div>

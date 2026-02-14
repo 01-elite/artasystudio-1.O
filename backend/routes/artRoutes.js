@@ -54,9 +54,10 @@ router.put('/view/:artId', async (req, res) => {
     } catch (err) { res.status(500).json({ message: "Error updating views" }); }
 });
 
+// ✅ UPDATED: Added auctionEnd to the upload logic
 router.post('/upload', upload.single('image'), async (req, res) => {
     try {
-        const { title, price, description, category, creatorId, isAuction } = req.body;
+        const { title, price, description, category, creatorId, isAuction, auctionEnd } = req.body;
 
         const newArt = await Artwork.create({
             title,
@@ -65,6 +66,8 @@ router.post('/upload', upload.single('image'), async (req, res) => {
             category,
             creator: creatorId,
             isAuction: isAuction === 'true',
+            // ✅ This conversion is critical to fix the NaN error
+            auctionEnd: isAuction === 'true' && auctionEnd ? new Date(auctionEnd) : null,
             highestBid: isAuction === 'true' ? price : 0,
             image: req.file.path,        // Cloudinary URL
             public_id: req.file.filename // Cloudinary public_id

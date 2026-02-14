@@ -69,4 +69,18 @@ router.get('/followers/:userId', async (req, res) => {
     }
 });
 
+// Update User Address
+router.put('/update-address/:userId', async (req, res) => {
+    try {
+        const updatedUser = await User.findByIdAndUpdate(
+            req.params.userId,
+            { $set: { address: req.body } },
+            { new: true }
+        );
+        res.json(updatedUser);
+    } catch (err) {
+        res.status(500).json({ message: "Update failed" });
+    }
+});
+
 module.exports = router;

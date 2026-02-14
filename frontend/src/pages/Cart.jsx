@@ -1,59 +1,123 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Trash2, Minus, Plus, ShieldCheck } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import Axios from 'axios';
 
 
+const PaymentGateway = async (amount) => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    
+    // Check if address exists in the profile
+    if (!user.address || !user.address.street) {
+        alert("Amazon Style: Please add a shipping address in your Profile before purchasing!");
+        navigate(`/profile/${user._id}`);
+        return;
+    }
+
+    // Since address exists, proceed directly to Razorpay without any prompts
+    try {
+        const { data: keydata } = await Axios.get('http://localhost:5001/api/v1/getkey');
+        const { data: ordereddata } = await Axios.post('http://localhost:5001/api/v1/payment/process', { amount });
+
+        const options = {
+            key: keydata.key,
+            amount,
+            currency: 'INR',
+            name: "ArtVista Studio",
+            order_id: ordereddata.order.id,
+            callback_url: `http://localhost:5001/api/v1/payment-success/${user._id}`,
+            prefill: { 
+                name: user.name, 
+                email: user.email, 
+                contact: user.address.phone 
+            },
+            notes: { address: JSON.stringify(user.address) },
+            theme: { color: '#FF8C00' },
+        };
+
+        new window.Razorpay(options).open();
+    } catch (err) {
+        alert("Payment Error");
+    }
+};
 const Cart = () => {
     const [cartItems, setCartItems] = useState(JSON.parse(localStorage.getItem('cart')) || []);
-    
     const navigate = useNavigate();
     
-const user = JSON.parse(localStorage.getItem("user"));
-const userid = user?._id;
-const username= user?.name;
-const useremail= user?.email;
+    const user = JSON.parse(localStorage.getItem("user"));
+    const userid = user?._id;
+    const useremail = user?.email;
 
-console.log("User ID:", userid);
+    const PaymentGateway = async (amount) => {
+        if (!user || !useremail) {
+            alert("Please login to proceed with the payment.");
+            navigate('/login');
+            return;
+        }
 
-  
-    // Listen for changes from other tabs/components
-    const PaymentGateway = async(amount) => {
-         if(localStorage.getItem('cart') === null) {
-        navigate('/products');
-    }
-    if(localStorage.getItem('userId')==null){
-        navigate('/login');
-    }
-if(userid!==null ){
-    const {data:keydata}=await Axios.get('http://localhost:5001/api/v1/getkey');
-    const {key}=keydata;
-     const {data:ordereddata}=await Axios.post('http://localhost:5001/api/v1/payment/process',{amount});
-     const {order}=ordereddata;
-     console.log(userid);
-     const options = {
-        key, // Use the key from the API response
-        amount, // Amount is in currency subunits.
-        currency: 'INR',
-        name: username,
-        description: 'Test Transaction',
-        order_id: order.id, // Use the order_id from the API response
-        callback_url: `http://localhost:5001/api/v1/payment-success/${userid}`, // Your success URL
-        prefill: {
-          name: username,
-          email: useremail,
-          contact: '9999999999'
-        },
-        theme: {
-          color: '#F37254'
-        },
-      };
-  const razor = new window.Razorpay(options);
-razor.open();
-}
-        // Placeholder for actual payment integration
-    
-    }
+        if (cartItems.length === 0) {
+            alert("Your cart is empty!");
+            return;
+        }
+
+        // ✅ Check if user already has a saved address
+        let shippingAddress = user.address;
+
+        // If address is missing or empty, ask and save it
+        if (!shippingAddress || !shippingAddress.street || shippingAddress.street === "") {
+            const street = prompt("Enter Street/House No:");
+            const city = prompt("Enter City:");
+            const state = prompt("Enter State:");
+            const pincode = prompt("Enter Pincode:");
+            const phone = prompt("Enter Phone Number:");
+
+            if (!street || !city || !pincode || !phone) {
+                alert("Address is required for shipment!");
+                return;
+            }
+
+            shippingAddress = { street, city, state, pincode, phone };
+
+            try {
+                // Save this address to the User profile in DB so we don't ask again
+                const { data } = await Axios.put(`http://localhost:5001/api/auth/update-address/${userid}`, shippingAddress);
+                // Update local storage so the app knows the address is now saved
+                localStorage.setItem("user", JSON.stringify(data));
+            } catch (err) {
+                console.error("Failed to save address to profile");
+            }
+        }
+
+        try {
+            const { data: keydata } = await Axios.get('http://localhost:5001/api/v1/getkey');
+            const { data: ordereddata } = await Axios.post('http://localhost:5001/api/v1/payment/process', { amount });
+
+            const options = {
+                key: keydata.key,
+                amount: amount,
+                currency: 'INR',
+                name: "ArtVista Studio",
+                description: 'Artwork Purchase',
+                order_id: ordereddata.order.id,
+                callback_url: `http://localhost:5001/api/v1/payment-success/${userid}`,
+                prefill: {
+                    name: user.name,
+                    email: useremail,
+                    contact: shippingAddress.phone
+                },
+                notes: {
+                    address: JSON.stringify(shippingAddress)
+                },
+                theme: { color: '#FF8C00' },
+            };
+
+            const razor = new window.Razorpay(options);
+            razor.open();
+        } catch (err) {
+            alert("Payment failed to initialize.");
+        }
+    };
+
     useEffect(() => {
         const syncCart = () => {
             setCartItems(JSON.parse(localStorage.getItem('cart')) || []);
@@ -62,101 +126,49 @@ razor.open();
         return () => window.removeEventListener('storage', syncCart);
     }, []);
 
-   
-
     const removeFromCart = (cartId) => {
         const updated = cartItems.filter(item => item.cartId !== cartId);
         setCartItems(updated);
         localStorage.setItem('cart', JSON.stringify(updated));
-        window.dispatchEvent(new Event('storage')); // Notify Navbar
+        window.dispatchEvent(new Event('storage'));
     };
 
-    const subtotal = cartItems.reduce((acc, item) => acc + (Number(item.price) * (item.quantity || 1)), 0);
+    const subtotal = cartItems.reduce((acc, item) => acc + (Number(item.price)), 0);
 
     return (
         <div className="max-w-7xl mx-auto p-6 md:p-12 bg-white min-h-screen font-sans">
-            <h1 className="text-3xl font-bold mb-8 text-gray-900">Shopping Cart</h1>
-
+            <h1 className="text-3xl font-bold mb-8 text-gray-900 text-left">Shopping Cart</h1>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                 <div className="lg:col-span-2 border-t border-gray-100">
                     {cartItems.map((item) => (
-                        <div key={item.cartId} className="flex gap-6 py-8 border-b border-gray-100 items-start">
-                            <img 
-                                onClick={() => navigate('/')} 
-                                src={item.image} 
-                                className="w-32 h-32 md:w-44 md:h-44 object-cover rounded-lg cursor-pointer hover:opacity-90 transition" 
-                                alt={item.title} 
-                            />
-
+                        <div key={item.cartId} className="flex gap-6 py-8 border-b border-gray-100 items-start text-left">
+                            <img src={item.image} className="w-32 h-32 md:w-44 md:h-44 object-cover rounded-lg" alt={item.title} />
                             <div className="flex-1 space-y-2">
                                 <div className="flex justify-between">
-                                    <h3 className="text-xl font-bold text-gray-900">
-                                        {item.title}
-                                    </h3>
+                                    <h3 className="text-xl font-bold text-gray-900">{item.title}</h3>
                                     <p className="text-lg font-bold text-gray-900">${item.price}</p>
                                 </div>
-                                <p className="text-sm text-gray-500 line-clamp-2 leading-relaxed">
-                                    {item.description || "Limited edition ArtVista masterpiece, verified for authenticity."}
-                                </p>
+                                <p className="text-sm text-gray-500 line-clamp-2">{item.description}</p>
                                 <div className="text-[10px] font-black uppercase text-green-600 flex items-center gap-1">
-                                    <ShieldCheck size={12}/> In Stock & Ready to Ship
+                                    <ShieldCheck size={12}/> Verified Artwork
                                 </div>
-                                <div className="flex items-center gap-6 mt-4">
-                                    
-                                    <div className="h-4 w-[1px] bg-gray-200"></div>
-                                    <button onClick={() => removeFromCart(item.cartId)} className="text-xs font-bold text-blue-500 hover:underline">Delete</button>
-                                </div>
+                                <button onClick={() => removeFromCart(item.cartId)} className="text-xs font-bold text-red-500 hover:underline mt-4">Remove</button>
                             </div>
                         </div>
                     ))}
-                    {cartItems.length === 0 && (
-                        <div className="py-20 text-center">
-                            <p className="text-xl text-gray-400 font-bold mb-4">Your ArtVista cart is empty.</p>
-                            <Link to="/" className="text-blue-500 font-bold hover:underline">Continue shopping</Link>
-                        </div>
-                    )}
                 </div>
-
-                <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200 sticky top-28 shadow-sm">
-                    <div className="flex items-center gap-2 text-green-700 mb-4">
-                        <CheckCircle size={18} fill="#15803d" className="text-white"/>
-                        <p className="text-xs font-medium">Your order qualifies for FREE Shipping.</p>
-                    </div>
-                    <div className="mb-6">
-                        <span className="text-lg">Subtotal ({cartItems.length} items): </span>
+                <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200 sticky top-28">
+                    <div className="mb-6 text-left">
+                        <span className="text-lg">Total ({cartItems.length} items): </span>
                         <span className="text-xl font-black">${subtotal.toLocaleString()}</span>
                     </div>
-                    <button 
-                        onClick={() => PaymentGateway(subtotal)}
-                        className="w-full bg-[#FF8C00] hover:bg-orange-600 text-white py-3 rounded-full font-bold text-sm shadow-sm border border-[#F2C200] transition-colors mb-3"
-                    >
+                    <button onClick={() => PaymentGateway(subtotal)} className="w-full bg-[#FF8C00] hover:bg-orange-600 text-white py-3 rounded-full font-bold transition-colors shadow-lg">
                         Proceed to Checkout
                     </button>
-                    <div className="p-4 bg-white rounded-xl border border-gray-200 mt-4">
-                        <p className="text-[11px] font-bold text-gray-800 mb-2">Order Summary</p>
-                        <div className="flex justify-between text-xs text-gray-500 mb-1">
-                            <span>Items:</span>
-                            <span>${subtotal}</span>
-                        </div>
-                        <div className="flex justify-between text-xs text-gray-500 mb-3">
-                            <span>Shipping:</span>
-                            <span className="text-green-700">FREE</span>
-                        </div>
-                        <div className="flex justify-between border-t pt-2 font-bold text-red-700">
-                            <span>Order Total:</span>
-                            <span>${subtotal}</span>
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>
     );
 };
-
-const CheckCircle = ({ size, fill, className }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} className={className} xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM10 17L5 12L6.41 10.59L10 14.17L17.59 6.58L19 8L10 17Z" />
-    </svg>
-);
 
 export default Cart;
