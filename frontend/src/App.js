@@ -7,6 +7,7 @@ import Profile from './pages/Profile';
 import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
 import Cart from './pages/Cart';
+import PaymentSucess from './components/PaymentSucess';
 
 function App() {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')));
@@ -52,7 +53,10 @@ function App() {
             path="/dashboard" 
             element={user?.role === 'creator' ? <Dashboard /> : <Navigate to="/profile" />} 
           />
-          
+          <Route
+            path="/payment-success"
+            element={<PaymentSucess />}
+          />
           <Route 
             path="/upload" 
             element={user?.role === 'creator' ? <UploadArt /> : <Navigate to="/profile" />} 

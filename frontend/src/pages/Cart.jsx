@@ -1,12 +1,59 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, Minus, Plus, ShieldCheck } from 'lucide-react';
+import Axios from 'axios';
+
 
 const Cart = () => {
     const [cartItems, setCartItems] = useState(JSON.parse(localStorage.getItem('cart')) || []);
+    
     const navigate = useNavigate();
+    
+const user = JSON.parse(localStorage.getItem("user"));
+const userid = user?._id;
+const username= user?.name;
+const useremail= user?.email;
 
+console.log("User ID:", userid);
+
+  
     // Listen for changes from other tabs/components
+    const PaymentGateway = async(amount) => {
+         if(localStorage.getItem('cart') === null) {
+        navigate('/products');
+    }
+    if(localStorage.getItem('userId')==null){
+        navigate('/login');
+    }
+if(userid!==null ){
+    const {data:keydata}=await Axios.get('http://localhost:5001/api/v1/getkey');
+    const {key}=keydata;
+     const {data:ordereddata}=await Axios.post('http://localhost:5001/api/v1/payment/process',{amount});
+     const {order}=ordereddata;
+     console.log(userid);
+     const options = {
+        key, // Use the key from the API response
+        amount, // Amount is in currency subunits.
+        currency: 'INR',
+        name: username,
+        description: 'Test Transaction',
+        order_id: order.id, // Use the order_id from the API response
+        callback_url: `http://localhost:5001/api/v1/payment-success/${userid}`, // Your success URL
+        prefill: {
+          name: username,
+          email: useremail,
+          contact: '9999999999'
+        },
+        theme: {
+          color: '#F37254'
+        },
+      };
+  const razor = new window.Razorpay(options);
+razor.open();
+}
+        // Placeholder for actual payment integration
+    
+    }
     useEffect(() => {
         const syncCart = () => {
             setCartItems(JSON.parse(localStorage.getItem('cart')) || []);
@@ -15,17 +62,7 @@ const Cart = () => {
         return () => window.removeEventListener('storage', syncCart);
     }, []);
 
-    const updateQuantity = (cartId, delta) => {
-        const updated = cartItems.map(item => {
-            if (item.cartId === cartId) {
-                const newQty = Math.max(1, (item.quantity || 1) + delta);
-                return { ...item, quantity: newQty };
-            }
-            return item;
-        });
-        setCartItems(updated);
-        localStorage.setItem('cart', JSON.stringify(updated));
-    };
+   
 
     const removeFromCart = (cartId) => {
         const updated = cartItems.filter(item => item.cartId !== cartId);
@@ -65,11 +102,7 @@ const Cart = () => {
                                     <ShieldCheck size={12}/> In Stock & Ready to Ship
                                 </div>
                                 <div className="flex items-center gap-6 mt-4">
-                                    <div className="flex items-center border border-gray-200 rounded-xl bg-gray-50 overflow-hidden shadow-sm">
-                                        <button onClick={() => updateQuantity(item.cartId, -1)} className="p-2 hover:bg-gray-200 transition"><Minus size={14}/></button>
-                                        <span className="px-4 font-bold text-sm">{item.quantity || 1}</span>
-                                        <button onClick={() => updateQuantity(item.cartId, 1)} className="p-2 hover:bg-gray-200 transition"><Plus size={14}/></button>
-                                    </div>
+                                    
                                     <div className="h-4 w-[1px] bg-gray-200"></div>
                                     <button onClick={() => removeFromCart(item.cartId)} className="text-xs font-bold text-blue-500 hover:underline">Delete</button>
                                 </div>
@@ -94,7 +127,7 @@ const Cart = () => {
                         <span className="text-xl font-black">${subtotal.toLocaleString()}</span>
                     </div>
                     <button 
-                        onClick={() => alert("Redirecting to Secure Payment Gateway...")}
+                        onClick={() => PaymentGateway(subtotal)}
                         className="w-full bg-[#FF8C00] hover:bg-orange-600 text-white py-3 rounded-full font-bold text-sm shadow-sm border border-[#F2C200] transition-colors mb-3"
                     >
                         Proceed to Checkout

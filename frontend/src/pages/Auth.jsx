@@ -20,7 +20,7 @@ const Auth = () => {
             
             // Save user data to localStorage
             localStorage.setItem('user', JSON.stringify(data));
-            
+           
             alert(isLogin ? `Welcome back, ${data.name}!` : "Account created successfully!");
             
             // Redirect based on role
