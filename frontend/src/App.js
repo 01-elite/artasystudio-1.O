@@ -7,16 +7,15 @@ import Profile from './pages/Profile';
 import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
 import Cart from './pages/Cart';
-import Orders from './pages/Orders'; // ✅ New Import
+import Orders from './pages/Orders';
 import PaymentSucess from './components/PaymentSucess';
+import AdminDashboard from './pages/AdminDashboard'; // Import naya admin page
 
 function App() {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')));
 
   useEffect(() => {
-    const syncUser = () => {
-      setUser(JSON.parse(localStorage.getItem('user')));
-    };
+    const syncUser = () => setUser(JSON.parse(localStorage.getItem('user')));
     window.addEventListener('storage', syncUser);
     return () => window.removeEventListener('storage', syncUser);
   }, []);
@@ -31,30 +30,18 @@ function App() {
     <Router>
       <div className="ArtVista-App font-sans min-h-screen bg-white">
         <Navbar user={user} role={user?.role} onLogout={handleLogout} />
-        
         <Routes>
           <Route path="/" element={<Explore />} />
-          <Route path="/login" element={!user ? <Auth /> : <Navigate to="/profile" />} />
-          <Route 
-            path="/profile/:userId?" 
-            element={user ? <Profile /> : <Navigate to="/login" />} 
-          />
-          <Route 
-            path="/dashboard" 
-            element={user?.role === 'creator' ? <Dashboard /> : <Navigate to="/profile" />} 
-          />
-          <Route 
-            path="/orders" 
-            element={user ? <Orders /> : <Navigate to="/login" />} 
-          />
-          <Route
-            path="/payment-success"
-            element={<PaymentSucess />}
-          />
-          <Route 
-            path="/upload" 
-            element={user?.role === 'creator' ? <UploadArt /> : <Navigate to="/profile" />} 
-          />
+          <Route path="/login" element={!user ? <Auth /> : <Navigate to="/" />} />
+          <Route path="/profile/:userId?" element={user ? <Profile /> : <Navigate to="/login" />} />
+          
+          {/* Admin Route */}
+          <Route path="/admin-panel" element={user?.role === 'admin' ? <AdminDashboard /> : <Navigate to="/" />} />
+          
+          <Route path="/dashboard" element={user?.role === 'creator' ? <Dashboard /> : <Navigate to="/profile" />} />
+          <Route path="/orders" element={user ? <Orders /> : <Navigate to="/login" />} />
+          <Route path="/payment-success" element={<PaymentSucess />} />
+          <Route path="/upload" element={user?.role === 'creator' ? <UploadArt /> : <Navigate to="/profile" />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>

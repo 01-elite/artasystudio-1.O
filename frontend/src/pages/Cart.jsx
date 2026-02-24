@@ -3,43 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
 import Axios from 'axios';
 
-
-const PaymentGateway = async (amount) => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    
-    // Check if address exists in the profile
-    if (!user.address || !user.address.street) {
-        alert("Amazon Style: Please add a shipping address in your Profile before purchasing!");
-        navigate(`/profile/${user._id}`);
-        return;
-    }
-
-    // Since address exists, proceed directly to Razorpay without any prompts
-    try {
-        const { data: keydata } = await Axios.get('http://localhost:5001/api/v1/getkey');
-        const { data: ordereddata } = await Axios.post('http://localhost:5001/api/v1/payment/process', { amount });
-
-        const options = {
-            key: keydata.key,
-            amount,
-            currency: 'INR',
-            name: "ArtVista Studio",
-            order_id: ordereddata.order.id,
-            callback_url: `http://localhost:5001/api/v1/payment-success/${user._id}`,
-            prefill: { 
-                name: user.name, 
-                email: user.email, 
-                contact: user.address.phone 
-            },
-            notes: { address: JSON.stringify(user.address) },
-            theme: { color: '#FF8C00' },
-        };
-
-        new window.Razorpay(options).open();
-    } catch (err) {
-        alert("Payment Error");
-    }
-};
 const Cart = () => {
     const [cartItems, setCartItems] = useState(JSON.parse(localStorage.getItem('cart')) || []);
     const navigate = useNavigate();
@@ -60,10 +23,11 @@ const Cart = () => {
             return;
         }
 
-        // ✅ Check if user already has a saved address
+        // Using the first item's ID for revenue attribution in this single-transaction flow
+        const primaryArtworkId = cartItems[0]._id;
+
         let shippingAddress = user.address;
 
-        // If address is missing or empty, ask and save it
         if (!shippingAddress || !shippingAddress.street || shippingAddress.street === "") {
             const street = prompt("Enter Street/House No:");
             const city = prompt("Enter City:");
@@ -79,9 +43,7 @@ const Cart = () => {
             shippingAddress = { street, city, state, pincode, phone };
 
             try {
-                // Save this address to the User profile in DB so we don't ask again
                 const { data } = await Axios.put(`http://localhost:5001/api/auth/update-address/${userid}`, shippingAddress);
-                // Update local storage so the app knows the address is now saved
                 localStorage.setItem("user", JSON.stringify(data));
             } catch (err) {
                 console.error("Failed to save address to profile");
@@ -99,14 +61,16 @@ const Cart = () => {
                 name: "ArtVista Studio",
                 description: 'Artwork Purchase',
                 order_id: ordereddata.order.id,
-                callback_url: `http://localhost:5001/api/v1/payment-success/${userid}`,
+                // ✅ Added artworkId to the query string so the backend can credit the creator
+                callback_url: `http://localhost:5001/api/v1/payment-success/${userid}?artworkId=${primaryArtworkId}`,
                 prefill: {
                     name: user.name,
                     email: useremail,
                     contact: shippingAddress.phone
                 },
                 notes: {
-                    address: JSON.stringify(shippingAddress)
+                    address: JSON.stringify(shippingAddress),
+                    artworkId: primaryArtworkId
                 },
                 theme: { color: '#FF8C00' },
             };

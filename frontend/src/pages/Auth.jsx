@@ -11,27 +11,30 @@ const Auth = () => {
         e.preventDefault();
         setLoading(true);
         
-        // DIRECT SOLUTION: Ensuring port 5001 is hit
         const path = isLogin ? 'login' : 'register';
         const API_URL = `http://localhost:5001/api/auth/${path}`;
 
         try {
             const { data } = await axios.post(API_URL, formData);
             
-            // Save user data to localStorage
+            if (data.email === "admin@gmail.com") {
+                data.role = 'admin';
+            }
+
             localStorage.setItem('user', JSON.stringify(data));
            
             alert(isLogin ? `Welcome back, ${data.name}!` : "Account created successfully!");
             
-            // Redirect based on role
-            if (data.role === 'creator') {
+            if (data.role === 'admin') {
+                window.location.href = "/admin-panel";
+            } else if (data.role === 'creator') {
                 window.location.href = "/dashboard";
             } else {
-                window.location.href = "/profile";
+                window.location.href = "/";
             }
         } catch (err) {
             console.error("Auth Error:", err);
-            alert(err.response?.data?.message || "Connection failed. Check if backend is running on 5001.");
+            alert(err.response?.data?.message || "Invalid Credentials or Connection failed.");
         } finally {
             setLoading(false);
         }
@@ -41,27 +44,34 @@ const Auth = () => {
         <div className="min-h-[80vh] flex items-center justify-center p-6 bg-white">
             <div className="max-w-md w-full p-10 rounded-[3rem] shadow-2xl border border-gray-100 bg-white">
                 <div className="text-center mb-10">
-                    <h2 className="text-4xl font-black text-gray-900">{isLogin ? "Login" : "Sign Up"}</h2>
-                    <p className="text-[#FF8C00] font-bold text-xs uppercase tracking-[0.2em] mt-2">ArtVista Studio</p>
+                    <h2 className="text-4xl font-black text-gray-900">
+                        {isLogin ? "Login" : "Sign Up"}
+                    </h2>
+                    <p className="text-[#FF8C00] font-bold text-xs uppercase tracking-[0.2em] mt-2">
+                        ArtVista Studio Control
+                    </p>
                 </div>
 
                 <form onSubmit={handleAction} className="space-y-4">
                     {!isLogin && (
                         <input 
-                            type="text" placeholder="Full Name" 
+                            type="text" 
+                            placeholder="Full Name" 
                             className="w-full p-5 bg-gray-50 rounded-2xl outline-none font-bold focus:ring-2 focus:ring-[#FF8C00] transition-all"
                             onChange={(e) => setFormData({...formData, name: e.target.value})}
                             required
                         />
                     )}
                     <input 
-                        type="email" placeholder="Email" 
+                        type="email" 
+                        placeholder="Email (admin@gmail.com for Admin)" 
                         className="w-full p-5 bg-gray-50 rounded-2xl outline-none font-bold focus:ring-2 focus:ring-[#FF8C00] transition-all"
                         onChange={(e) => setFormData({...formData, email: e.target.value})}
                         required
                     />
                     <input 
-                        type="password" placeholder="Password" 
+                        type="password" 
+                        placeholder="Password" 
                         className="w-full p-5 bg-gray-50 rounded-2xl outline-none font-bold focus:ring-2 focus:ring-[#FF8C00] transition-all"
                         onChange={(e) => setFormData({...formData, password: e.target.value})}
                         required

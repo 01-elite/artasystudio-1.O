@@ -1,7 +1,7 @@
 const instance = require('../config/razorpay');
 const crypto = require('crypto');
 const Payment = require('../models/payment');
-const User = require('../models/user');
+const User = require('../models/User');
 
 const processPayment = async (req, res) => {
   try {
@@ -24,10 +24,11 @@ const paymentverification = async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
     const userId = req.params.userId;
+    
+    // Extract artworkId from the URL query string
+    const artworkId = req.query.artworkId; 
 
-    // Razorpay sends 'notes' in the body during a callback_url redirect
-    // We parse it safely so the validation doesn't fail
-    const addressData = req.body.address ? JSON.parse(req.body.address) : null;
+    console.log("Verifying Payment for User:", userId, "Artwork:", artworkId);
 
     const body = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSignature = crypto
@@ -35,33 +36,49 @@ const paymentverification = async (req, res) => {
       .update(body.toString())
       .digest("hex");
 
-    if (expectedSignature !== razorpay_signature) {
-        // Instead of a black screen, send them to a failure page on the frontend
+    const isAuthentic = expectedSignature === razorpay_signature;
+
+    if (!isAuthentic) {
+        console.log("Signature Mismatch!");
         return res.redirect(`http://localhost:3000/payment-fail`);
     }
 
+    const orderDetails = await instance.orders.fetch(razorpay_order_id);
+
     const user = await User.findById(userId);
+    if (!user) {
+        return res.status(404).send("User not found");
+    }
     
-    // ✅ SAVE TO MONGO DB
-    // We use the address from the user profile if the note is missing
+    const shippingAddress = {
+        street: user.address?.street || "Not Provided",
+        city: user.address?.city || "Not Provided",
+        state: user.address?.state || "Not Provided",
+        pincode: user.address?.pincode || "000000",
+        phone: user.address?.phone || "0000000000"
+    };
+
+    // SAVE TO MONGO DB
+    // artworkId is now saved so the Admin Panel can credit the correct creator
     await Payment.create({
       razorpay_order_id,
       razorpay_payment_id,
+      amount: orderDetails.amount, 
+      artworkId: artworkId, 
       name: user.name,
       email: user.email,
-      address: addressData || user.address // Fallback to saved profile address
+      address: shippingAddress 
     });
 
-    // ✅ REDIRECT TO FRONTEND (This stops the JSON screen)
+    console.log("Payment Saved. Revenue attributed to Artwork:", artworkId);
     return res.redirect(`http://localhost:3000/payment-success?reference=${razorpay_payment_id}`);
 
   } catch (error) {
-    console.log("Error:", error);
-    res.status(500).send("Internal Server Error");
+    console.error("CRITICAL PAYMENT ERROR:", error);
+    res.status(500).send("Internal Server Error: " + error.message);
   }
 };
 
-// ✅ Add this to the bottom of productController.js
 const getAllPayments = async (req, res) => {
     try {
         const payments = await Payment.find().sort({ createdAt: -1 });
@@ -71,6 +88,4 @@ const getAllPayments = async (req, res) => {
     }
 };
 
-// Make sure to add getAllPayments to the module.exports at the very bottom
 module.exports = { processPayment, getKey, paymentverification, getAllPayments };
-

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
-  ShoppingCart, MoreVertical, LayoutDashboard, 
+  ShoppingCart, MoreVertical, LayoutDashboard, ShieldAlert,
   UserCircle, Repeat, LogOut, Gavel, LogIn, UserPlus, PlusSquare, Package 
 } from 'lucide-react';
 
@@ -18,11 +18,8 @@ const Navbar = ({ user, role, onLogout }) => {
     };
     updateCart();
     window.addEventListener('storage', updateCart);
-    
     const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
+      if (menuRef.current && !menuRef.current.contains(event.target)) setIsOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
@@ -32,26 +29,27 @@ const Navbar = ({ user, role, onLogout }) => {
   }, []);
 
   const handleSwitchProfile = () => {
+    if (role === 'admin') return; // Admin cannot switch
     const storedUser = JSON.parse(localStorage.getItem('user'));
     if (!storedUser) return;
     const newRole = storedUser.role === 'creator' ? 'user' : 'creator';
     const updatedUser = { ...storedUser, role: newRole };
     localStorage.setItem('user', JSON.stringify(updatedUser));
     setIsOpen(false);
-    alert(`Switched to ${newRole.toUpperCase()} account`);
     window.location.reload(); 
   };
 
+  // Menu Items Logic
   const menuItems = [
-    { label: 'View Profile', icon: <UserCircle size={18}/>, path: '/profile', show: !!user, action: null },
-    { label: 'My Orders', icon: <Package size={18}/>, path: '/orders', show: !!user, action: null }, // ✅ Added Orders
-    { label: 'View Dashboard', icon: <LayoutDashboard size={18}/>, path: '/dashboard', show: role === 'creator', action: null },
-    { label: 'Active Bids', icon: <Gavel size={18}/>, path: '/dashboard', show: role === 'creator', action: null },
+    { label: 'Admin Panel', icon: <ShieldAlert size={18}/>, path: '/admin-panel', show: role === 'admin' },
+    { label: 'View Profile', icon: <UserCircle size={18}/>, path: '/profile', show: !!user && role !== 'admin' },
+    { label: 'My Orders', icon: <Package size={18}/>, path: '/orders', show: !!user && role !== 'admin' },
+    { label: 'View Dashboard', icon: <LayoutDashboard size={18}/>, path: '/dashboard', show: role === 'creator' },
     { 
       label: `Switch to ${role === 'creator' ? 'User' : 'Creator'}`, 
       icon: <Repeat size={18}/>, 
       path: null, 
-      show: !!user, 
+      show: !!user && role !== 'admin', // Hide switch for Admin
       action: handleSwitchProfile 
     },
   ];
@@ -62,7 +60,7 @@ const Navbar = ({ user, role, onLogout }) => {
         ART<span className="text-[#FF8C00]">VISTA</span>
       </Link>
 
-      <div className="flex items-center gap-8 font-bold text-xs text-gray-400 uppercase tracking-widest text-left">
+      <div className="flex items-center gap-8 font-bold text-xs text-gray-400 uppercase tracking-widest">
         <Link to="/" className="hover:text-[#FF8C00] transition">Explore</Link>
         {role === 'creator' && (
           <Link to="/upload" className="flex items-center gap-1 text-[#FF8C00]">
@@ -72,14 +70,16 @@ const Navbar = ({ user, role, onLogout }) => {
       </div>
 
       <div className="flex items-center gap-5">
-        <Link to="/cart" className="relative cursor-pointer hover:text-[#FF8C00] transition p-2">
-          <ShoppingCart size={22} />
-          {cartCount > 0 && (
-            <span className="absolute top-0 right-0 bg-[#FF8C00] text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-black border-2 border-white">
-              {cartCount}
-            </span>
-          )}
-        </Link>
+        {role !== 'admin' && (
+          <Link to="/cart" className="relative cursor-pointer hover:text-[#FF8C00] transition p-2">
+            <ShoppingCart size={22} />
+            {cartCount > 0 && (
+              <span className="absolute top-0 right-0 bg-[#FF8C00] text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-black border-2 border-white">
+                {cartCount}
+              </span>
+            )}
+          </Link>
+        )}
 
         <div className="relative" ref={menuRef}>
           <button 
@@ -91,20 +91,18 @@ const Navbar = ({ user, role, onLogout }) => {
 
           {isOpen && (
             <div className="absolute right-0 mt-4 w-60 bg-white border border-gray-100 rounded-[2rem] shadow-2xl py-4 z-[100] overflow-hidden">
-              <div className="px-6 py-2 mb-2 border-b border-gray-50 text-left">
-                <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em]">Studio Menu</p>
+              <div className="px-6 py-2 mb-2 border-b border-gray-50">
+                <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em]">
+                  {role === 'admin' ? 'Admin Menu' : 'Studio Menu'}
+                </p>
               </div>
 
               {menuItems.map((item, i) => item.show && (
                 <button
                   key={i}
                   onClick={() => { 
-                    if (item.action) {
-                      item.action();
-                    } else {
-                      navigate(item.path); 
-                      setIsOpen(false); 
-                    }
+                    if (item.action) item.action();
+                    else { navigate(item.path); setIsOpen(false); }
                   }}
                   className="w-full flex items-center gap-4 px-6 py-3.5 text-sm font-bold text-gray-600 hover:bg-orange-50 hover:text-[#FF8C00] transition-all"
                 >
@@ -112,7 +110,7 @@ const Navbar = ({ user, role, onLogout }) => {
                 </button>
               ))}
 
-              <div className="h-[1px] bg-gray-50 my-2 mx-4 text-left"></div>
+              <div className="h-[1px] bg-gray-50 my-2 mx-4"></div>
 
               {user ? (
                 <button 
@@ -123,11 +121,8 @@ const Navbar = ({ user, role, onLogout }) => {
                 </button>
               ) : (
                 <div className="space-y-1">
-                  <Link to="/login" onClick={() => setIsOpen(false)} className="flex items-center gap-4 px-6 py-3.5 text-sm font-bold text-gray-600 hover:bg-gray-50">
+                  <Link to="/login" onClick={() => setIsOpen(false)} className="flex items-center gap-4 px-6 py-3.5 text-sm font-bold text-gray-600">
                     <LogIn size={18}/> Sign In
-                  </Link>
-                  <Link to="/login" onClick={() => setIsOpen(false)} className="flex items-center gap-4 px-6 py-3.5 text-sm font-bold text-[#FF8C00] hover:bg-orange-50">
-                    <UserPlus size={18}/> Sign Up
                   </Link>
                 </div>
               )}
