@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import { 
     Users, DollarSign, Image as ImageIcon, Search, 
     Trash2, Eye, X, TrendingUp, MapPin, Calendar, Heart, Loader2, 
@@ -7,6 +8,7 @@ import {
 } from 'lucide-react';
 
 const AdminDashboard = () => {
+    const navigate = useNavigate();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
@@ -117,6 +119,18 @@ const AdminDashboard = () => {
                     <ImageIcon size={120} className="absolute -right-8 -bottom-8 text-gray-900 opacity-5 rotate-12 group-hover:rotate-0 transition-transform duration-700" />
                 </div>
             </div>
+           <div className="visual-presentation w-full  flex items-center justify-center mb-16 bg-gray-50">
+  <div className="dabba bg-white shadow-xl rounded-2xl px-10 py-8 
+                  flex items-center justify-center 
+                  cursor-pointer 
+                  transition-all duration-300 
+                  hover:shadow-2xl hover:scale-105 
+                  border border-gray-200">
+    <p className="text-lg font-semibold text-gray-700 hover:text-blue-600 transition-colors duration-300" onClick={()=>{navigate('/analytics')}}>
+      Click here for visualization
+    </p>
+  </div>
+</div>
 
             {/* --- USER TABLE --- */}
             <div className="bg-white rounded-[3.5rem] border border-gray-100 shadow-2xl overflow-hidden mb-20">

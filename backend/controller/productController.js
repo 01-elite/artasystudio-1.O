@@ -2,6 +2,9 @@ const instance = require('../config/razorpay');
 const crypto = require('crypto');
 const Payment = require('../models/payment');
 const User = require('../models/User');
+const mongoose = require('mongoose');
+const Analytics = require('../models/Analytics');
+const Artwork= require('../models/Artwork');
 
 const processPayment = async (req, res) => {
   try {
@@ -69,8 +72,21 @@ const paymentverification = async (req, res) => {
       email: user.email,
       address: shippingAddress 
     });
-
+    
     console.log("Payment Saved. Revenue attributed to Artwork:", artworkId);
+    // CREDIT THE CREATOR
+    const artwork = await Artwork.findById(artworkId);
+    if (artwork) {
+      await Analytics.create({
+        price: orderDetails.amount / 100,
+        city: shippingAddress.city,
+        state: shippingAddress.state,
+        year: new Date().getFullYear(),
+        month: new Date().getMonth() + 1,
+        categories: artwork.category,
+      });
+    }
+
     return res.redirect(`http://localhost:3000/payment-success?reference=${razorpay_payment_id}`);
 
   } catch (error) {
