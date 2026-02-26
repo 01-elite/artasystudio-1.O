@@ -123,7 +123,7 @@ const Explore = () => {
             )}
 
             {/* --- 2. AVAILABLE INVENTORY --- */}
-            <div className="bg-[#fcfcfc] -mx-8 px-10 py-24 rounded-[4rem] border-y border-zinc-100 mb-24 shadow-inner">
+            <div className="bg-[#fdf4f0] -mx-8 px-10 py-24 rounded-[4rem] border-y border-zinc-100 mb-24 shadow-inner">
                 <div className="flex justify-between items-end mb-16 px-4">
                     <h2 className="text-4xl font-black uppercase tracking-tight text-zinc-900">Available <span className="text-[#FF8C00]">Inventory</span></h2>
                     <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-zinc-400">
