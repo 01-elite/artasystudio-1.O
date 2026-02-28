@@ -5,7 +5,27 @@ const artworkSchema = new mongoose.Schema({
     image: { type: String, required: true },
     public_id: { type: String, required: true },
     price: { type: Number, required: true },
-    category: { type: String, enum: ['Black & White', 'Colourful', 'Painting', 'Sketch'], required: true },
+   
+    category: {
+    type: String,
+    required: true,
+    enum: [
+        'Colour drawing',
+        'Sketching',
+        'Charcoal drawing',
+        'Acrylic painting',
+        'Oil Painting',
+        'Watercolour Art',
+        'Mandala Art',
+        'Anime & Manga',
+        'Pottery & Ceramics',
+        'Calligraphy',
+        'Canvas Print',
+        'Portrait Sketch',
+        'Abstract Expressionism',
+        'Pop Art'
+    ], required:true
+},
     description: { type: String },
     creator: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     likes: { type: Number, default: 0 },

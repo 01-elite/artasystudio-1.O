@@ -19,7 +19,6 @@ const Profile = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [step, setStep] = useState(1);
     
-    // ✅ Updated formData to include full address fields
     const [formData, setFormData] = useState({
         username: loggedInUser?.username || '',
         phone: loggedInUser?.address?.phone || '',
@@ -32,8 +31,6 @@ const Profile = () => {
     });
 
     const isOwnProfile = !userId || userId === loggedInUser?._id;
-    // ✅ Check if phone AND city exist for "Complete" status
-    const isProfileIncomplete = isOwnProfile && (!loggedInUser?.username || !loggedInUser?.address?.phone || !loggedInUser?.address?.city);
 
     const fetchProfileData = async () => {
         const targetId = userId || loggedInUser?._id;
@@ -84,7 +81,7 @@ const Profile = () => {
     if (loading) return <div className="min-h-screen flex items-center justify-center bg-white"><Loader2 className="animate-spin text-[#FF8C00]" /></div>;
 
     return (
-        <div className="max-w-6xl mx-auto pt-10 px-6 font-sans text-left">
+        <div className="max-w-6xl mx-auto pt-10 px-6 font-sans text-left text-black">
             {/* --- HEADER --- */}
             <div className="flex flex-col md:flex-row items-start gap-10 mb-6">
                 <div className="w-32 h-32 bg-orange-50 rounded-full flex items-center justify-center text-4xl font-black text-[#FF8C00] border-4 border-white shadow-lg shrink-0">
@@ -97,16 +94,16 @@ const Profile = () => {
                     </div>
                     <p className="text-[#FF8C00] font-black text-[11px] uppercase tracking-[0.3em] mt-1">@{profileUser?.username || 'new_member'}</p>
                     <div className="mt-4 flex gap-2">
-                        <div className="px-3 py-1 bg-gray-100 rounded-full text-[10px] font-black uppercase text-gray-500">{profileUser?.role}</div>
+                        <div className="px-3 py-1 bg-gray-100 rounded-full text-[10px] font-black uppercase text-gray-50">{profileUser?.role}</div>
                         {profileUser?.address?.city && <div className="px-3 py-1 bg-blue-50 rounded-full text-[10px] font-black uppercase text-blue-500 flex items-center gap-1"><MapPin size={10}/> {profileUser.address.city}</div>}
                     </div>
                 </div>
             </div>
 
-            {/* --- JOURNEY OVERLAY (Steps Updated) --- */}
+            {/* --- JOURNEY OVERLAY --- */}
             {showJourney && (
                 <div className="fixed inset-0 z-[500] bg-white/95 backdrop-blur-md flex items-center justify-center p-6 text-left">
-                    <div className="max-w-md w-full bg-white p-10 rounded-[3rem] shadow-2xl border border-gray-100 space-y-8 relative">
+                    <div className="max-w-md w-full bg-white p-10 rounded-[3rem] shadow-2xl border border-gray-100 space-y-8 relative text-black">
                         <button onClick={() => setShowJourney(false)} className="absolute top-8 right-8 text-gray-300 hover:text-red-500"><X size={24}/></button>
                         
                         <div className="text-center">
@@ -142,30 +139,47 @@ const Profile = () => {
 
                         {step === 3 && (
                             <div className="space-y-4">
-                                <p className="text-[10px] font-black uppercase text-gray-400 text-center">Interests</p>
-                                <div className="flex flex-wrap gap-2 justify-center">
-                                    {['Sketch', 'Painting', 'Digital', 'Colourful', 'B&W'].map(cat => (
-                                        <button key={cat} onClick={() => handleCategoryToggle(cat)} className={`px-4 py-2 rounded-full text-[10px] font-black uppercase border transition-all ${formData.categories.includes(cat) ? 'bg-[#FF8C00] text-white border-[#FF8C00]' : 'border-gray-200'}`}>{cat}</button>
+                                <p className="text-[10px] font-black uppercase text-gray-400 text-center tracking-widest">Select Interests</p>
+                                <div className="flex flex-wrap gap-2 justify-center max-h-[300px] overflow-y-auto p-2 border border-gray-50 rounded-2xl">
+                                    {[
+                                        'Colour drawing', 'Sketching', 'Charcoal drawing', 'Acrylic painting', 
+                                        'Oil Painting', 'Watercolour Art', 'Mandala Art', 'Anime & Manga', 
+                                        'Pottery & Ceramics', 'Calligraphy', 'Canvas Print', 'Portrait Sketch', 
+                                        'Abstract Expressionism', 'Pop Art'
+                                    ].map(cat => (
+                                        <button 
+                                            key={cat} 
+                                            onClick={() => handleCategoryToggle(cat)} 
+                                            className={`px-4 py-2 rounded-full text-[9px] font-black uppercase border transition-all ${formData.categories.includes(cat) ? 'bg-[#FF8C00] text-white border-[#FF8C00]' : 'border-gray-200 text-gray-400'}`}
+                                        >
+                                            {cat}
+                                        </button>
                                     ))}
                                 </div>
-                                <button onClick={() => setStep(4)} className="w-full bg-black text-white py-5 rounded-2xl font-black uppercase text-xs mt-4">Almost There</button>
+                                <div className="flex gap-4">
+                                    <button onClick={() => setStep(2)} className="flex-1 bg-gray-100 py-5 rounded-2xl font-black uppercase text-xs">Back</button>
+                                    <button onClick={() => setStep(4)} className="flex-[2] bg-black text-white py-5 rounded-2xl font-black uppercase text-xs">Almost There</button>
+                                </div>
                             </div>
                         )}
 
                         {step === 4 && (
                             <div className="space-y-6">
                                 <div className="grid grid-cols-2 gap-3">
-                                    <button onClick={() => setFormData({...formData, role: 'user'})} className={`p-4 rounded-2xl border-2 ${formData.role === 'user' ? 'border-[#FF8C00] bg-orange-50' : 'border-gray-50'}`}>Collector</button>
-                                    <button onClick={() => setFormData({...formData, role: 'creator'})} className={`p-4 rounded-2xl border-2 ${formData.role === 'creator' ? 'border-[#FF8C00] bg-orange-50' : 'border-gray-50'}`}>Artist</button>
+                                    <button onClick={() => setFormData({...formData, role: 'user'})} className={`p-4 rounded-2xl border-2 font-black uppercase text-[10px] tracking-widest ${formData.role === 'user' ? 'border-[#FF8C00] bg-orange-50 text-[#FF8C00]' : 'border-gray-50 text-gray-400'}`}>Collector</button>
+                                    <button onClick={() => setFormData({...formData, role: 'creator'})} className={`p-4 rounded-2xl border-2 font-black uppercase text-[10px] tracking-widest ${formData.role === 'creator' ? 'border-[#FF8C00] bg-orange-50 text-[#FF8C00]' : 'border-gray-50 text-gray-400'}`}>Artist</button>
                                 </div>
-                                <button onClick={handleFinish} className="w-full bg-[#FF8C00] text-white py-5 rounded-2xl font-black uppercase text-xs shadow-xl">{isEditing ? "Save Profile" : "Finalize Studio"}</button>
+                                <div className="flex gap-4">
+                                    <button onClick={() => setStep(3)} className="flex-1 bg-gray-100 py-5 rounded-2xl font-black uppercase text-xs">Back</button>
+                                    <button onClick={handleFinish} className="flex-[2] bg-[#FF8C00] text-white py-5 rounded-2xl font-black uppercase text-xs shadow-xl">{isEditing ? "Save Profile" : "Finalize Studio"}</button>
+                                </div>
                             </div>
                         )}
                     </div>
                 </div>
             )}
 
-            {/* --- TABS & GRID (Same as before) --- */}
+            {/* --- TABS & GRID --- */}
             <div className="flex justify-center gap-12 border-t pt-4 mb-10 text-[10px] font-black uppercase tracking-widest">
                 <button onClick={() => setActiveTab('posts')} className={activeTab === 'posts' ? 'text-black border-t-2 border-black' : 'text-gray-300'}><Grid className="inline mr-2" size={14}/> Studio Gallery</button>
                 <button onClick={() => setActiveTab('liked')} className={activeTab === 'liked' ? 'text-red-500 border-t-2 border-red-500' : 'text-gray-300'}><Heart className="inline mr-2" size={14}/> Liked Art</button>
@@ -173,7 +187,9 @@ const Profile = () => {
 
             <div className="grid grid-cols-3 md:grid-cols-5 gap-4 mb-20">
                 {(activeTab === 'posts' ? allArt : likedPosts).map(post => (
-                    <div key={post._id} className="aspect-square rounded-2xl overflow-hidden bg-gray-50 border relative group shadow-sm"><img src={post.image} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt="" /></div>
+                    <div key={post._id} className="aspect-square rounded-2xl overflow-hidden bg-gray-50 border relative group shadow-sm">
+                        <img src={post.image} className="w-full h-full object-cover transition-transform group-hover:scale-110" alt="" />
+                    </div>
                 ))}
             </div>
         </div>

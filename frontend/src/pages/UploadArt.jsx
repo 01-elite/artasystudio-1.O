@@ -6,34 +6,38 @@ const UploadArt = () => {
     const [file, setFile] = useState(null);
     const [step, setStep] = useState(1);
     const [loading, setLoading] = useState(false);
-    const [auctionHours, setAuctionHours] = useState(24); // Default 24h duration
+    const [auctionHours, setAuctionHours] = useState(24); 
+    
+    // ✅ Check if user exists to avoid creatorId error
     const user = JSON.parse(localStorage.getItem('user')) || {};
 
     const [formData, setFormData] = useState({
         title: '', 
         price: '', 
         description: '', 
-        category: 'Painting', 
+        category: 'Colour drawing', // Defaulting to one of your new ones
         isCustomizable: false, 
         isAuction: false
     });
 
     const handleSubmit = async () => {
-        if (!file || !formData.title || !formData.price) {
-            return alert("Please fill in all required fields and upload an image.");
-        }
+        // Validation
+        if (!file) return alert("Please upload an image.");
+        if (!formData.title) return alert("Please enter a title.");
+        if (!formData.price) return alert("Please enter a price.");
+        if (!user._id) return alert("You must be logged in to upload!");
 
         const data = new FormData();
         data.append('image', file);
         data.append('title', formData.title);
         data.append('price', formData.price);
-        data.append('description', formData.description);
+        data.append('description', formData.description || "No description provided.");
         data.append('category', formData.category);
-        data.append('isCustomizable', formData.isCustomizable);
-        data.append('isAuction', formData.isAuction);
-        data.append('creatorId', user._id);
+        data.append('isCustomizable', String(formData.isCustomizable));
+        data.append('isAuction', String(formData.isAuction));
+        data.append('creatorId', user._id); // Make sure this matches your backend req.body.creatorId
 
-        // ✅ Calculate Auction End Time if applicable
+        // Handle Auction Logic
         if (formData.isAuction) {
             const auctionEndDate = new Date();
             auctionEndDate.setHours(auctionEndDate.getHours() + Number(auctionHours));
@@ -42,12 +46,17 @@ const UploadArt = () => {
 
         try {
             setLoading(true);
-            await axios.post('http://localhost:5001/api/art/upload', data);
-            alert("Masterpiece Published!");
-            window.location.href = "/profile";
+            const response = await axios.post('http://localhost:5001/api/art/upload', data, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            
+            if (response.status === 201 || response.status === 200) {
+                alert("Masterpiece Published!");
+                window.location.href = "/profile";
+            }
         } catch (err) { 
-            console.error(err);
-            alert("Upload failed."); 
+            console.error("Upload Error Details:", err.response?.data);
+            alert(err.response?.data?.message || "Upload failed. Check console for details."); 
         } finally { 
             setLoading(false); 
         }
@@ -81,18 +90,35 @@ const UploadArt = () => {
                         <button onClick={() => setStep(1)} className="text-[10px] font-black uppercase text-gray-400 hover:text-black transition-colors">Back</button>
                     </div>
 
-                    <input placeholder="Title" className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-orange-100 transition-all" onChange={(e) => setFormData({...formData, title: e.target.value})} />
+                    <input placeholder="Title" className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none border-2 border-transparent focus:border-orange-100 transition-all text-black" value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} />
                     
-                    <select className="w-full p-4 bg-gray-50 rounded-2xl font-bold text-gray-500 outline-none border-2 border-transparent focus:border-orange-100 transition-all" onChange={(e) => setFormData({...formData, category: e.target.value})}>
-                        <option>Painting</option><option>Sketch</option><option>Black & White</option><option>Colourful</option>
+                    <select 
+                        className="w-full p-4 bg-gray-50 rounded-2xl font-bold text-gray-500 outline-none border-2 border-transparent focus:border-orange-100 transition-all" 
+                        value={formData.category}
+                        onChange={(e) => setFormData({...formData, category: e.target.value})}
+                    >
+                        <option value="Colour drawing">Colour drawing</option>
+                        <option value="Sketching">Sketching</option>
+                        <option value="Charcoal drawing">Charcoal drawing</option>
+                        <option value="Acrylic painting">Acrylic painting</option>
+                        <option value="Oil Painting">Oil Painting</option>
+                        <option value="Watercolour Art">Watercolour Art</option>
+                        <option value="Mandala Art">Mandala Art</option>
+                        <option value="Anime & Manga">Anime & Manga</option>
+                        <option value="Pottery & Ceramics">Pottery & Ceramics</option>
+                        <option value="Calligraphy">Calligraphy</option>
+                        <option value="Canvas Print">Canvas Print</option>
+                        <option value="Portrait Sketch">Portrait Sketch</option>
+                        <option value="Abstract Expressionism">Abstract Expressionism</option>
+                        <option value="Pop Art">Pop Art</option>
                     </select>
 
-                    <textarea placeholder="The story behind this piece..." className="w-full p-4 bg-gray-50 rounded-2xl h-24 font-bold outline-none border-2 border-transparent focus:border-orange-100 transition-all" onChange={(e) => setFormData({...formData, description: e.target.value})} />
+                    <textarea placeholder="The story behind this piece..." className="w-full p-4 bg-gray-50 rounded-2xl h-24 font-bold outline-none border-2 border-transparent focus:border-orange-100 transition-all text-black" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} />
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <p className="text-[10px] font-black uppercase text-gray-400 mb-2 ml-2">{formData.isAuction ? "Starting Bid ($)" : "Price ($)"}</p>
-                            <input type="number" placeholder="0.00" className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none border-2 border-orange-100" onChange={(e) => setFormData({...formData, price: e.target.value})} />
+                            <p className="text-[10px] font-black uppercase text-gray-400 mb-2 ml-2">{formData.isAuction ? "Starting Bid (₹)" : "Price (₹)"}</p>
+                            <input type="number" placeholder="0.00" className="w-full p-4 bg-gray-50 rounded-2xl font-bold outline-none border-2 border-orange-100 text-black" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} />
                         </div>
                         
                         {formData.isAuction && (
@@ -104,6 +130,8 @@ const UploadArt = () => {
                                     onChange={(e) => setAuctionHours(e.target.value)}
                                 >
                                     <option value="1">1 Hour</option>
+                                    <option value="2">2 Hours</option>
+                                    <option value="5">5 Hours</option>
                                     <option value="12">12 Hours</option>
                                     <option value="24">24 Hours</option>
                                     <option value="48">48 Hours</option>
