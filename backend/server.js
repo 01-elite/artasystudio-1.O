@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const Analytics = require('./models/Analytics');
 require('dotenv').config();
 
 // Route Imports
@@ -42,6 +43,10 @@ app.use('/api/v1', paymentRoutes);
 app.use('/api/admin', adminRoutes); // ✅ ADD THIS
 
 app.get('/', (req, res) => res.send("🚀 ArtVista Backend Live!"));
+app.get("/analytics/users", async (req, res) => {
+  const users = await Analytics.find();
+  res.json(users);
+});
 
 // 5. SERVER
 const PORT = 5001; 
