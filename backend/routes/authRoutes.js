@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 
-// Route to update full profile info (Username, Categories, Phone, etc.)
+// --- 1. PROFILE UPDATE (Username, Role, Categories, Address) ---
 router.put('/update-address/:userId', async (req, res) => {
     try {
         const { username, role, categoryPreferences, address } = req.body;
@@ -30,7 +30,52 @@ router.put('/update-address/:userId', async (req, res) => {
     }
 });
 
-// Purane routes (Login/Register) ko mat bhulna agar wo isi file mein the:
+// --- 2. FIXED LIKE LOGIC (Safe Array Handling) ---
+router.put('/like-art', async (req, res) => {
+    try {
+        const { userId, artId } = req.body;
+        const user = await User.findById(userId);
+        
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        // ✅ Initialization Fix: Agar likedArt undefined hai toh initialize karein
+        if (!user.likedArt) {
+            user.likedArt = [];
+        }
+
+        const isLiked = user.likedArt.includes(artId);
+        
+        if (isLiked) {
+            // Remove artId from array
+            user.likedArt = user.likedArt.filter(id => id.toString() !== artId);
+        } else {
+            // Add artId to array
+            user.likedArt.push(artId);
+        }
+        
+        await user.save();
+        res.json(user); // Returns updated user with new likedArt array
+    } catch (err) {
+        console.error("Like Action Error:", err);
+        res.status(500).json({ message: "Like action failed" });
+    }
+});
+
+// --- 3. FETCH LIKED DETAILS (Populated for Profile Grid) ---
+router.get('/liked-details/:userId', async (req, res) => {
+    try {
+        // Populates 'likedArt' with actual artwork data (image, title, etc.)
+        const user = await User.findById(req.params.userId).populate('likedArt');
+        if (!user) return res.status(404).json({ message: "User not found" });
+        
+        res.json(user.likedArt || []);
+    } catch (err) {
+        console.error("Fetch Liked Error:", err);
+        res.status(500).json({ message: "Error fetching liked artwork" });
+    }
+});
+
+// --- 4. AUTH & COMMUNITY ROUTES ---
 router.post('/register', async (req, res) => {
     try {
         const newUser = await User.create(req.body);
@@ -41,7 +86,9 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
     try {
         const user = await User.findOne({ email: req.body.email });
-        if (!user || user.password !== req.body.password) return res.status(401).json({ message: "Invalid credentials" });
+        if (!user || user.password !== req.body.password) {
+            return res.status(401).json({ message: "Invalid credentials" });
+        }
         res.json(user);
     } catch (err) { res.status(500).json({ message: err.message }); }
 });
@@ -51,13 +98,6 @@ router.get('/followers/:userId', async (req, res) => {
         const user = await User.findById(req.params.userId).populate('followers', 'name email');
         res.json(user.followers || []);
     } catch (err) { res.status(500).json({ message: "Error fetching community" }); }
-});
-
-router.get('/liked-details/:userId', async (req, res) => {
-    try {
-        const user = await User.findById(req.params.userId).populate('likedArt');
-        res.json(user.likedArt || []);
-    } catch (err) { res.status(500).json({ message: "Error fetching" }); }
 });
 
 module.exports = router;

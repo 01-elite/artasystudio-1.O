@@ -19,7 +19,7 @@ const userSchema = new mongoose.Schema({
     },
     profilePic: { type: String, default: '' },
     bio: { type: String, default: 'Digital Artist & Curator' },
-    likedArt: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Artwork' }], 
+    likedArt: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Artwork' }],
     followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
     posts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Artwork' }]
