@@ -5,23 +5,16 @@ const artworkSchema = new mongoose.Schema({
     image: { type: String, required: true },
     public_id: { type: String, required: true },
     price: { type: Number, required: true },
-    category: { 
-        type: String, 
-        enum: ['Black & White', 'Colourful', 'Painting', 'Sketch'], 
-        required: true 
-    },
+    category: { type: String, enum: ['Black & White', 'Colourful', 'Painting', 'Sketch'], required: true },
     description: { type: String },
-    isCustomizable: { type: Boolean, default: false },
     creator: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     likes: { type: Number, default: 0 },
     views: { type: Number, default: 0 },
-    
-    // ✅ Updated Auction & Sale Fields
     isAuction: { type: Boolean, default: false },
     auctionEnd: { type: Date },
     highestBid: { type: Number, default: 0 },
-    highestBidder: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }, // Tracking current winner
-    isSold: { type: Boolean, default: false }, // Locking the item after payment
+    highestBidder: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+    isSold: { type: Boolean, default: false },
     bids: [{
         bidder: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         amount: { type: Number },
@@ -29,4 +22,5 @@ const artworkSchema = new mongoose.Schema({
     }]
 }, { timestamps: true });
 
-module.exports = mongoose.model('Artwork', artworkSchema);
+// Explicitly link to 'artworks' collection
+module.exports = mongoose.model('Artwork', artworkSchema, 'artworks');

@@ -1,15 +1,18 @@
-
 const express = require('express');
 const router = express.Router();
 const { 
     processPayment, 
     getKey, 
     paymentverification, 
-    getAllPayments // ✅ New controller function
+    getAllPayments 
 } = require('../controller/productController');
 
-router.route('/payment/process').post(processPayment).get(getAllPayments); // ✅ Added GET here
-router.route('/getkey').get(getKey);
-router.route('/payment-success/:userId').post(paymentverification);
+// Define routes clearly
+router.post('/payment/process', processPayment);
+router.get('/payment/process', getAllPayments);
+router.get('/getkey', getKey);
+
+// Use the specific userId parameter your controller expects
+router.post('/payment-success/:userId', paymentverification);
 
 module.exports = { paymentRoutes: router };

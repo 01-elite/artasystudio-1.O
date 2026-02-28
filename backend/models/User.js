@@ -4,8 +4,7 @@ const userSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    role: { type: String, enum: ['user', 'creator', 'buyer'], default: 'user' },
-    // ✅ Store address here so it's saved forever
+    role: { type: String, enum: ['user', 'creator', 'admin'], default: 'user' },
     address: {
         street: { type: String, default: '' },
         city: { type: String, default: '' },
@@ -21,5 +20,4 @@ const userSchema = new mongoose.Schema({
     posts: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Artwork' }]
 }, { timestamps: true });
 
-const User = mongoose.models.User || mongoose.model("User", userSchema);
-module.exports = User;
+module.exports = mongoose.models.User || mongoose.model("User", userSchema);
