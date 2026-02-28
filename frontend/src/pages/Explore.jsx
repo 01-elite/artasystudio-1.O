@@ -1,116 +1,133 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { Heart, X, Check, UserPlus, Gavel, Loader2, Sparkles, Clock } from 'lucide-react';
+import { 
+    Heart, X, Sparkles, Clock, Truck, ShoppingBag, ArrowUpRight, 
+    Zap, Share2, MoreHorizontal, CheckCircle2, ShieldCheck 
+} from 'lucide-react';
 
 const Explore = () => {
     const navigate = useNavigate();
     const [artworks, setArtworks] = useState([]);
     const [selectedArt, setSelectedArt] = useState(null);
-    const [bidAmount, setBidAmount] = useState("");
     const [likedItems, setLikedItems] = useState(new Set());
-    const [loading, setLoading] = useState(false);
-    const [timeLeft, setTimeLeft] = useState(""); 
+    const [timeLeftMap, setTimeLeftMap] = useState({});
+    const [bidAmount, setBidAmount] = useState(""); 
     
-    const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')) || {});
-    const [followedCreators, setFollowedCreators] = useState(new Set(user.following || []));
+    const [user] = useState(JSON.parse(localStorage.getItem('user')) || {});
 
+    // ✅ FETCH DATA & SYNC CART
     const fetchData = async () => {
         try {
             const res = await axios.get("http://localhost:5001/api/art/explore");
-            setArtworks(res.data);
+            const allArt = res.data;
+            setArtworks(allArt);
+            
+            // Logic to check if someone outbid the current user
+            syncCartWithBids(allArt);
         } catch (err) { console.error(err); }
     };
 
-    useEffect(() => { fetchData(); }, []);
+    // ✅ LOGIC: REMOVE FROM CART IF OUTBID
+    const syncCartWithBids = (latestArt) => {
+        let cart = JSON.parse(localStorage.getItem('cart')) || [];
+        if (cart.length === 0) return;
 
-    const addToCart = (art) => {
-        const cart = JSON.parse(localStorage.getItem('cart')) || [];
-        const exists = cart.find(item => item._id === art._id);
-        if (exists) {
-            alert("This masterpiece is already in your cart!");
-            return;
+        let cartChanged = false;
+        let outbidItemName = "";
+
+        const updatedCart = cart.filter(item => {
+            if (!item.isAuction) return true;
+
+            const freshData = latestArt.find(a => a._id === item._id);
+            if (freshData) {
+                const dbBidder = freshData.highestBidder ? String(freshData.highestBidder) : null;
+                const currentUserId = user._id ? String(user._id) : null;
+
+                // If someone else is now the winner, remove it from THIS user's cart
+                if (dbBidder && dbBidder !== currentUserId) {
+                    cartChanged = true;
+                    outbidItemName = freshData.title;
+                    return false; 
+                }
+                item.price = freshData.highestBid || freshData.price;
+            }
+            return true;
+        });
+
+        if (cartChanged) {
+            localStorage.setItem('cart', JSON.stringify(updatedCart));
+            window.dispatchEvent(new Event('storage'));
+            alert(`🚨 OUTBID: Someone bid more on "${outbidItemName}"! It has been removed from your cart. Place a higher bid to get it back.`);
         }
-        const cartItem = { ...art, cartId: Date.now(), quantity: 1 };
-        const updatedCart = [...cart, cartItem];
-        localStorage.setItem('cart', JSON.stringify(updatedCart));
-        window.dispatchEvent(new Event('storage'));
-        alert(`${art.title} added to cart!`);
-        setSelectedArt(null); 
     };
 
-    // ✅ SAFE Auction Countdown Logic
+    useEffect(() => { 
+        fetchData(); 
+        const interval = setInterval(fetchData, 10000); // Polling every 10s
+        return () => clearInterval(interval);
+    }, []);
+
     useEffect(() => {
-        if (!selectedArt || !selectedArt.isAuction) return;
-
         const timer = setInterval(() => {
-            if (!selectedArt.auctionEnd) {
-                setTimeLeft("No Time Set");
-                clearInterval(timer);
-                return;
-            }
-
-            const end = new Date(selectedArt.auctionEnd).getTime();
-            const now = new Date().getTime();
-            
-            if (isNaN(end)) {
-                setTimeLeft("Invalid Date");
-                clearInterval(timer);
-                return;
-            }
-
-            const distance = end - now;
-
-            if (distance < 0) {
-                setTimeLeft("EXPIRED");
-                clearInterval(timer);
-            } else {
-                const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-                setTimeLeft(`${hours}h ${minutes}m ${seconds}s`);
-            }
-        }, 1000);
-
-        return () => clearInterval(timer);
-    }, [selectedArt]);
-
-    const handleBid = async () => {
-        if (timeLeft === "EXPIRED") return alert("Auction has already ended!");
-        if (!user._id) return alert("Login to bid!");
-        
-        try {
-            setLoading(true);
-            await axios.put(`http://localhost:5001/api/art/bid/${selectedArt._id}`, {
-                userId: user._id, amount: Number(bidAmount)
+            const newTimes = {};
+            artworks.forEach(art => {
+                if (art.isAuction && art.auctionEnd) {
+                    const dist = new Date(art.auctionEnd).getTime() - new Date().getTime();
+                    if (dist < 0) newTimes[art._id] = "EXPIRED";
+                    else {
+                        const h = Math.floor(dist / (1000 * 60 * 60));
+                        const m = Math.floor((dist % (1000 * 60 * 60)) / (1000 * 60));
+                        newTimes[art._id] = `${h}h ${m}m`;
+                    }
+                }
             });
-            alert("Bid Placed!");
-            setBidAmount("");
-            fetchData();
-            setSelectedArt(null);
-        } catch (err) { alert(err.response?.data?.message || "Bidding failed"); }
-        finally { setLoading(false); }
+            setTimeLeftMap(newTimes);
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [artworks]);
+
+    const addToCart = (art, redirect = false) => {
+        if (art.isSold) return;
+        
+        const finalBid = art.isAuction ? (Number(bidAmount) || art.highestBid || art.price) : art.price;
+        const cart = JSON.parse(localStorage.getItem('cart')) || [];
+        const cleanCart = cart.filter(item => item._id !== art._id);
+        
+        const cartItem = { 
+            ...art, 
+            price: finalBid, 
+            cartId: Date.now(), 
+            quantity: 1,
+            highestBidder: user._id 
+        };
+        
+        localStorage.setItem('cart', JSON.stringify([...cleanCart, cartItem]));
+        window.dispatchEvent(new Event('storage'));
+
+        if (redirect) {
+            navigate('/cart');
+        } else {
+            alert(`${art.title} added to collection!`);
+        }
     };
 
-    const toggleFollow = async (e, creatorId) => {
-        e.stopPropagation();
-        if (!user._id) return alert("Login to follow!");
+    const handlePlaceBid = async () => {
+        if (!bidAmount || Number(bidAmount) <= (selectedArt.highestBid || selectedArt.price)) {
+            return alert("Your bid must be higher than the current price!");
+        }
+
         try {
-            await axios.put("http://localhost:5001/api/auth/follow", { userId: user._id, targetId: creatorId });
-            let updatedFollowing = [...(user.following || [])];
-            const newFollows = new Set(followedCreators);
-            if (newFollows.has(creatorId)) {
-                newFollows.delete(creatorId);
-                updatedFollowing = updatedFollowing.filter(id => id !== creatorId);
-            } else {
-                newFollows.add(creatorId);
-                updatedFollowing.push(creatorId);
-            }
-            setFollowedCreators(newFollows);
-            const updatedUser = { ...user, following: updatedFollowing };
-            setUser(updatedUser);
-            localStorage.setItem('user', JSON.stringify(updatedUser));
-        } catch (err) { alert("Follow action failed"); }
+            await axios.put(`http://localhost:5001/api/art/bid/${selectedArt._id}`, {
+                userId: user._id,
+                amount: Number(bidAmount)
+            });
+            
+            addToCart(selectedArt, true);
+            fetchData(); 
+        } catch (err) {
+            alert(err.response?.data?.message || "Bidding failed.");
+        }
     };
 
     const toggleLike = (e, artId) => {
@@ -120,47 +137,61 @@ const Explore = () => {
         setLikedItems(newLikes);
     };
 
-    const auctions = artworks.filter(a => a.isAuction);
-    const gallery = artworks.filter(a => !a.isAuction);
+    const auctions = artworks.filter(a => a.isAuction && !a.isSold);
+    const gallery = artworks.filter(a => !a.isAuction && !a.isSold);
+    const soldRegistry = artworks.filter(a => a.isSold);
 
     return (
-        <div className="max-w-7xl mx-auto p-6 bg-white min-h-screen font-sans text-left">
+        <div className="max-w-[1600px] mx-auto p-4 md:p-8 bg-white min-h-screen font-sans text-left">
             
-            {/* --- WELCOME HERO SECTION --- */}
-            <div className="relative mb-10 mt-6 overflow-hidden rounded-[3rem] bg-black p-12 md:p-20 text-white">
-                <div className="relative z-10 max-w-2xl">
-                    <div className="flex items-center gap-2 mb-6">
-                        <Sparkles className="text-[#FF8C00]" size={20} />
-                        <span className="text-sm font-bold uppercase tracking-[0.3em] text-[#FF8C00]">Premium Art Market</span>
+            {/* --- HERO SECTION --- */}
+            <div className="relative mb-20 mt-4 overflow-hidden rounded-[3.5rem] bg-[#050505] py-20 px-12 md:px-24 text-white shadow-2xl border-b-[10px] border-[#FF8C00]">
+                <div className="relative z-10 max-w-7xl mx-auto grid lg:grid-cols-5 gap-16 items-center">
+                    <div className="lg:col-span-3">
+                        <div className="flex items-center gap-3 mb-8">
+                            <Sparkles className="text-[#FF8C00]" size={20} />
+                            <span className="text-[10px] font-black uppercase tracking-[0.5em] text-[#FF8C00]">Premier Art Exchange</span>
+                        </div>
+                        <h1 className="text-7xl md:text-[9.5rem] font-black leading-[0.8] mb-12 tracking-tighter uppercase italic text-white">
+                            ARTVISTA <br /> <span className="text-[#FF8C00]">STUDIO.</span>
+                        </h1>
+                        <p className="text-zinc-400 text-lg md:text-2xl font-medium max-w-2xl leading-tight">
+                            Verified provenance, blockchain-backed authenticity, and worldwide white-glove logistics.
+                        </p>
                     </div>
-                    <h1 className="text-5xl md:text-7xl font-black leading-tight mb-6">
-                        Welcome to <span className="text-[#FF8C00]">Artasystudio.</span>
-                    </h1>
-                    <p className="text-gray-400 text-lg md:text-xl font-medium mb-10 leading-relaxed">
-                        Discover, collect, and bid on extraordinary masterpieces from a curated selection of global creators.
-                    </p>
+                    <div className="lg:col-span-2 grid grid-cols-2 gap-y-16 gap-x-12 border-l border-white/5 pl-16 py-4">
+                        <div><p className="text-6xl font-black">12.4K</p><p className="text-[10px] font-black uppercase tracking-widest text-[#FF8C00] mt-3">Collectors</p></div>
+                        <div><p className="text-6xl font-black">450+</p><p className="text-[10px] font-black uppercase tracking-widest text-[#FF8C00] mt-3">Artists</p></div>
+                        <div><p className="text-6xl font-black">100%</p><p className="text-[10px] font-black uppercase tracking-widest text-[#FF8C00] mt-3">Insured</p></div>
+                        <div><p className="text-6xl font-black">24/7</p><p className="text-[10px] font-black uppercase tracking-widest text-[#FF8C00] mt-3">Support</p></div>
+                    </div>
                 </div>
-                <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-[#FF8C00] rounded-full blur-[150px] opacity-20"></div>
+                <div className="absolute top-[-30%] right-[-10%] w-[900px] h-[900px] bg-[#FF8C00] rounded-full blur-[250px] opacity-[0.1]"></div>
             </div>
 
-            {/* --- HORIZONTAL AUCTION SECTION --- */}
+            {/* --- 1. AUCTIONS --- */}
             {auctions.length > 0 && (
-                <div className="mb-20">
-                    <div className="flex items-center gap-3 mb-8">
-                        <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_red]"></div>
-                        <h2 className="text-2xl font-black uppercase tracking-tighter text-red-600 italic">Live Auction Booth</h2>
-                    </div>
-                    
-                    <div className="flex overflow-x-auto gap-6 pb-6 no-scrollbar">
+                <div className="mb-24 px-4">
+                    <h2 className="text-2xl font-black uppercase tracking-tight text-red-600 mb-10 flex items-center gap-3 italic">
+                         <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse shadow-[0_0_10px_red]" /> Live Auction Booth
+                    </h2>
+                    <div className="flex overflow-x-auto gap-8 pb-10 no-scrollbar snap-x snap-mandatory">
                         {auctions.map(art => (
-                            <div key={art._id} onClick={() => setSelectedArt(art)} className="min-w-[180px] md:min-w-[220px] group relative bg-white border border-red-100 rounded-[2rem] p-3 hover:shadow-2xl transition-all cursor-pointer">
-                                <div className="aspect-square rounded-[1.5rem] overflow-hidden mb-4 relative">
-                                    <img src={art.image} className="w-full h-full object-cover scale-110 group-hover:scale-100 transition-transform duration-700" alt="art" />
+                            <div key={art._id} className="min-w-[320px] md:min-w-[380px] snap-start group bg-white border border-red-100 rounded-[2.5rem] p-6 hover:shadow-2xl transition-all relative">
+                                <div className="absolute top-8 right-8 z-30 bg-red-600 text-white px-4 py-1.5 rounded-full text-[9px] font-black flex items-center gap-1 shadow-lg">
+                                    <Clock size={10} /> {timeLeftMap[art._id] || "LIVE"}
                                 </div>
-                                <div className="px-2 pb-2">
-                                    <p className="font-black text-gray-800 text-sm truncate mb-1 uppercase">{art.title}</p>
-                                    <div className="flex justify-between items-center">
-                                        <p className="font-black text-red-600 text-lg">${art.highestBid || art.price}</p>
+                                <div className="aspect-square rounded-[1.8rem] overflow-hidden mb-6 bg-zinc-50 cursor-pointer" onClick={() => { setSelectedArt(art); setBidAmount(""); }}>
+                                    <img src={art.image} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" alt="art" />
+                                </div>
+                                <div className="px-2 space-y-4 text-left">
+                                    <div>
+                                        <h3 className="text-xl font-black uppercase tracking-tighter text-zinc-900 truncate mb-1">{art.title}</h3>
+                                        <p className="text-[11px] text-zinc-400 font-medium italic line-clamp-1">"{art.description || "Masterpiece lot with verified records."}"</p>
+                                    </div>
+                                    <div className="flex justify-between items-center pt-5 border-t border-zinc-50">
+                                        <div><p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Current Bid</p><p className="text-2xl font-black text-red-600">₹{(art.highestBid || art.price).toLocaleString()}</p></div>
+                                        <button onClick={() => { setSelectedArt(art); setBidAmount(""); }} className="bg-red-600 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase shadow-lg">Place Bid</button>
                                     </div>
                                 </div>
                             </div>
@@ -169,22 +200,23 @@ const Explore = () => {
                 </div>
             )}
 
-            {/* --- GALLERY SECTION --- */}
-            <div className="bg-[#FFF8F0] -mx-6 px-10 py-16 rounded-[4rem]">
-                <h2 className="text-2xl font-black mb-10 uppercase tracking-tight">Public <span className="text-[#FF8C00]">Gallery</span></h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+            {/* --- 2. INVENTORY --- */}
+            <div className="bg-[#fdf4f0] -mx-8 px-10 py-24 rounded-[4rem] border-y border-zinc-100 mb-24 shadow-inner">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12">
                     {gallery.map(art => (
-                        <div key={art._id} className="group relative bg-white border border-orange-200 rounded-[2.5rem] p-4 hover:shadow-2xl transition-all flex flex-col">
-                            <div onClick={() => setSelectedArt(art)} className="aspect-square rounded-[1.8rem] overflow-hidden mb-5 relative cursor-pointer">
-                                <img src={art.image} className="w-full h-full object-cover scale-110 group-hover:scale-100 transition-transform duration-700" alt="gallery" />
+                        <div key={art._id} className="group relative bg-white p-6 rounded-[2.5rem] border border-zinc-200 hover:border-[#FF8C00]/40 transition-all duration-500 hover:shadow-2xl flex flex-col">
+                            <div className="relative aspect-square rounded-[1.8rem] overflow-hidden mb-6 bg-zinc-100 cursor-pointer" onClick={() => setSelectedArt(art)}>
+                                <img src={art.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000" alt={art.title} />
+                                <button onClick={(e) => toggleLike(e, art._id)} className="absolute top-4 right-4 z-20 p-3 bg-white/80 backdrop-blur-md rounded-full shadow-sm">
+                                    <Heart size={18} className={likedItems.has(art._id) ? "fill-red-500 text-red-500" : "text-zinc-400"} />
+                                </button>
                             </div>
-                            <div className="px-2 pb-2 flex-grow flex flex-col">
-                                <p className="font-black text-gray-900 text-base truncate uppercase tracking-tight">{art.title}</p>
-                                <div className="mt-auto pt-4 border-t border-gray-100 flex items-center justify-between gap-2">
-                                    <p className="font-black text-black text-xl">${art.price}</p>
-                                    <button onClick={() => addToCart(art)} className="bg-black text-white px-5 py-3 rounded-2xl text-[11px] font-black uppercase hover:bg-[#FF8C00] transition-all transform active:scale-95">
-                                        Add to Cart
-                                    </button>
+                            <div className="px-2 text-left space-y-3 flex-grow">
+                                <h3 className="text-2xl font-black uppercase tracking-tighter text-zinc-900 truncate">{art.title}</h3>
+                                <p className="text-xs text-zinc-500 font-medium line-clamp-2 h-8">{art.description || "Curated masterpiece."}</p>
+                                <div className="flex justify-between items-end pt-6 border-t">
+                                    <p className="text-3xl font-black text-zinc-900">₹{art.price?.toLocaleString()}</p>
+                                    <button onClick={() => setSelectedArt(art)} className="bg-zinc-900 text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest">View Piece</button>
                                 </div>
                             </div>
                         </div>
@@ -192,59 +224,65 @@ const Explore = () => {
                 </div>
             </div>
 
-            {/* --- MODAL --- */}
+            {/* --- 3. SOLD REGISTRY --- */}
+            {soldRegistry.length > 0 && (
+                <div className="px-8 pb-20">
+                    <h2 className="text-3xl font-black uppercase text-zinc-900 mb-12 tracking-tight">Archived <span className="text-[#FF8C00]">Registry</span></h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10">
+                        {soldRegistry.map(art => (
+                            <div key={art._id} className="group relative bg-white p-6 rounded-[2.5rem] border border-zinc-200 hover:shadow-xl transition-all">
+                                <div className="absolute top-10 left-10 z-30 bg-white/90 backdrop-blur-md text-red-600 px-4 py-2 rounded-full font-black text-[10px] uppercase flex items-center gap-2 border border-red-100 shadow-sm"><div className="w-2.5 h-2.5 bg-red-600 rounded-full animate-pulse" /> SOLD</div>
+                                <img src={art.image} className="aspect-square object-cover rounded-[1.8rem] mb-6 cursor-pointer" alt="" onClick={() => setSelectedArt(art)} />
+                                <h3 className="text-xl font-black uppercase text-zinc-900 truncate px-2">{art.title}</h3>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* --- MODAL (PINTEREST X AMAZON) --- */}
             {selectedArt && (
-                <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex items-center justify-center p-4">
-                    <button onClick={() => setSelectedArt(null)} className="absolute top-10 right-10 text-white"><X size={40} /></button>
-                    <div className="bg-white max-w-5xl w-full rounded-[3rem] overflow-hidden flex flex-col md:flex-row h-[85vh] shadow-2xl">
-                        <div className="flex-1 bg-gray-100 flex items-center justify-center p-8 relative text-left">
-                            <img src={selectedArt.image} className="w-full h-full object-contain rounded-2xl" alt="preview" />
-                            <button onClick={(e) => toggleLike(e, selectedArt._id)} className="absolute top-8 right-8 p-4 bg-white rounded-full shadow-lg">
-                                <Heart size={24} className={likedItems.has(selectedArt._id) ? "fill-red-500 text-red-500" : "text-gray-300"} />
-                            </button>
+                <div className="fixed inset-0 z-[100] bg-zinc-950/98 backdrop-blur-2xl flex items-center justify-center p-4">
+                    <button onClick={() => setSelectedArt(null)} className="absolute top-10 right-10 text-white/50 hover:text-white transition-colors"><X size={48} strokeWidth={1.5} /></button>
+                    <div className="bg-white max-w-[1200px] w-full rounded-[2.5rem] overflow-hidden flex flex-col md:flex-row h-[90vh] md:h-[80vh] shadow-2xl relative border border-white/10">
+                        <div className="flex-1 bg-[#F5F5F7] flex items-center justify-center p-6 md:p-12 relative group/img">
+                            <img src={selectedArt.image} className="max-h-full max-w-full object-contain rounded-2xl shadow-2xl" alt="preview" />
+                            <div className="absolute top-8 left-8 flex gap-3">
+                                <button className="p-3 bg-white/90 rounded-full shadow-lg"><Share2 size={20} className="text-zinc-900" /></button>
+                                <button className="p-3 bg-white/90 rounded-full shadow-lg"><MoreHorizontal size={20} className="text-zinc-900" /></button>
+                            </div>
                         </div>
-                        <div className="w-full md:w-[450px] p-10 flex flex-col justify-between text-left">
-                            <div>
-                                <div className="flex items-center justify-between mb-8 pb-4 border-b">
-                                    <div className="flex items-center gap-2 cursor-pointer group/user" onClick={() => navigate(`/profile/${selectedArt.creator?._id || selectedArt.creator}`)}>
-                                        <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center text-white text-[8px] font-bold group-hover/user:bg-[#FF8C00] transition-colors">{selectedArt.creator?.name?.[0] || "A"}</div>
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 group-hover/user:text-[#FF8C00] transition-colors">{selectedArt.creator?.name || "Artist"}</p>
-                                    </div>
-                                    <button onClick={(e) => toggleFollow(e, selectedArt.creator?._id || selectedArt.creator)} className={`flex items-center gap-1.5 px-5 py-2 rounded-full text-[10px] font-black uppercase transition-all ${followedCreators.has(selectedArt.creator?._id || selectedArt.creator) ? "bg-black text-white" : "bg-yellow-400 text-black"}`}>
-                                        {followedCreators.has(selectedArt.creator?._id || selectedArt.creator) ? <><Check size={12}/> Following</> : <><UserPlus size={12}/> Follow</>}
-                                    </button>
+
+                        <div className="w-full md:w-[480px] bg-white flex flex-col border-l border-zinc-100 overflow-y-auto">
+                            <div className="p-8 border-b border-zinc-50 flex items-center justify-between">
+                                <div className="flex items-center gap-4 group cursor-pointer" onClick={() => navigate(`/profile/${selectedArt.creator?._id || selectedArt.creator}`)}>
+                                    <div className="w-12 h-12 bg-zinc-900 rounded-full flex items-center justify-center text-white font-bold text-lg">{selectedArt.creator?.name?.[0] || 'A'}</div>
+                                    <div className="text-left"><div className="flex items-center gap-1"><p className="text-sm font-black uppercase text-zinc-900">{selectedArt.creator?.name || 'ArtVista Creator'}</p><CheckCircle2 size={14} className="text-blue-500 fill-blue-500/10" /></div><p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Verified Artist</p></div>
                                 </div>
-                                <h3 className="text-4xl font-black mb-4">{selectedArt.title}</h3>
-                                {selectedArt.isAuction && (
-                                    <div className="flex items-center gap-2 bg-red-50 p-4 rounded-2xl mb-6">
-                                        <Clock size={20} className="text-red-500" />
-                                        <div>
-                                            <p className="text-[10px] font-black text-red-400 uppercase">Ends In</p>
-                                            <p className="text-lg font-black text-red-600">{timeLeft}</p>
-                                        </div>
+                                <button onClick={(e) => toggleLike(e, selectedArt._id)} className={`p-3 rounded-full ${likedItems.has(selectedArt._id) ? 'bg-red-50 text-red-500' : 'bg-zinc-50 text-zinc-400'}`}><Heart size={20} fill={likedItems.has(selectedArt._id) ? "currentColor" : "none"} /></button>
+                            </div>
+
+                            <div className="p-10 space-y-6 flex-grow text-left">
+                                <div className="space-y-2"><p className="text-[10px] font-black text-[#FF8C00] uppercase tracking-[0.3em]">Registry No. {selectedArt._id.slice(-6)}</p><h3 className="text-5xl font-black uppercase tracking-tighter text-zinc-900 leading-[0.9]">{selectedArt.title}</h3></div>
+                                <p className="text-zinc-500 font-medium italic text-lg leading-relaxed border-l-4 border-zinc-100 pl-6">"{selectedArt.description || 'Verified masterpiece.'}"</p>
+                                
+                                {selectedArt.isAuction && !selectedArt.isSold && (
+                                    <div className="mt-8 p-6 bg-red-50 rounded-2xl border border-red-100 space-y-4">
+                                        <label className="text-[10px] font-black text-red-600 uppercase tracking-[0.2em]">Enter Your Bid (Min: ₹{(selectedArt.highestBid || selectedArt.price) + 1})</label>
+                                        <input type="number" value={bidAmount} onChange={(e) => setBidAmount(e.target.value)} placeholder="Enter amount..." className="w-full bg-white p-4 rounded-xl border border-red-200 font-black text-xl outline-none focus:ring-2 focus:ring-red-500" />
                                     </div>
                                 )}
-                                <p className="text-gray-500 font-medium italic mb-10">"{selectedArt.description}"</p>
                             </div>
-                            <div className="pt-10 border-t">
-                                {selectedArt.isAuction ? (
+
+                            <div className="p-10 bg-zinc-50/50 border-t border-zinc-100 mt-auto text-left">
+                                <div className="mb-8"><p className="text-[11px] font-black text-zinc-400 uppercase tracking-widest mb-2">Current Value</p><p className="text-6xl font-black text-zinc-900 tracking-tighter">₹{(selectedArt.highestBid || selectedArt.price).toLocaleString()}</p></div>
+                                {!selectedArt.isSold ? (
                                     <div className="space-y-4">
-                                        <p className="text-[10px] font-black text-gray-400 uppercase">Highest Bid</p>
-                                        <p className="text-5xl font-black text-red-600 mb-6">${selectedArt.highestBid || selectedArt.price}</p>
-                                        {timeLeft === "EXPIRED" ? (
-                                            <div className="w-full bg-black text-white py-5 rounded-[1.5rem] font-black text-center uppercase">Auction Expired</div>
-                                        ) : (
-                                            <>
-                                                <input type="number" placeholder="Enter bid..." className="w-full p-4 bg-gray-50 rounded-2xl outline-none font-bold" value={bidAmount} onChange={(e) => setBidAmount(e.target.value)} />
-                                                <button onClick={handleBid} className="w-full bg-red-600 text-white py-5 rounded-[1.5rem] font-black text-xl hover:bg-red-700 shadow-xl">{loading ? "PLACING..." : "PLACE BID"}</button>
-                                            </>
-                                        )}
+                                        <button onClick={() => selectedArt.isAuction ? handlePlaceBid() : addToCart(selectedArt, true)} className="w-full bg-[#FF8C00] text-white py-6 rounded-2xl font-black text-sm uppercase shadow-xl flex items-center justify-center gap-3 hover:bg-[#e67e00]"><Zap size={20} fill="currentColor" /> {selectedArt.isAuction ? 'Confirm & Place Bid' : 'Acquire Masterpiece'}</button>
+                                        <button onClick={() => addToCart(selectedArt, false)} className="w-full bg-zinc-900 text-white py-6 rounded-2xl font-black text-sm uppercase shadow-lg hover:bg-black transition-all">Add to Collection</button>
                                     </div>
                                 ) : (
-                                    <div>
-                                        <p className="text-5xl font-black mb-8">${selectedArt.price}</p>
-                                        <button onClick={() => addToCart(selectedArt)} className="w-full bg-black text-white py-5 rounded-[1.5rem] font-black text-xl hover:bg-orange-500 shadow-xl">COLLECT NOW</button>
-                                    </div>
+                                    <div className="w-full bg-zinc-100 text-zinc-400 py-10 rounded-2xl font-black text-center border-2 border-dashed border-zinc-200 uppercase text-[10px] tracking-[0.3em]">Asset in Private Registry</div>
                                 )}
                             </div>
                         </div>

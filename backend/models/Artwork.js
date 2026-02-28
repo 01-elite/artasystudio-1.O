@@ -16,10 +16,12 @@ const artworkSchema = new mongoose.Schema({
     likes: { type: Number, default: 0 },
     views: { type: Number, default: 0 },
     
-    // ✅ Fixed Auction Fields
+    // ✅ Updated Auction & Sale Fields
     isAuction: { type: Boolean, default: false },
     auctionEnd: { type: Date },
     highestBid: { type: Number, default: 0 },
+    highestBidder: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }, // Tracking current winner
+    isSold: { type: Boolean, default: false }, // Locking the item after payment
     bids: [{
         bidder: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         amount: { type: Number },
