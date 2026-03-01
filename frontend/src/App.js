@@ -9,7 +9,7 @@ import Dashboard from './pages/Dashboard';
 import Cart from './pages/Cart';
 import Orders from './pages/Orders';
 import PaymentSuccess from './components/PaymentSuccess';
-import AdminDashboard from './pages/AdminDashboard'; 
+// import AdminDashboard from './pages/AdminDashboard';  <-- YE LINE DELETE KAR DI HAI
 import Analytics from './pages/Analytics'; 
 import Footer from './components/Footer';
 
@@ -37,8 +37,11 @@ function App() {
             <Route path="/" element={<Explore />} />
             <Route path="/login" element={!user ? <Auth /> : <Navigate to="/" />} />
             <Route path="/profile/:userId?" element={user ? <Profile /> : <Navigate to="/login" />} />
-            <Route path="/admin-panel" element={user?.role === 'admin' ? <AdminDashboard /> : <Navigate to="/" />} />
+            
+            {/* ADMIN ROUTES - Ab dono Analytics kholenge */}
+            <Route path="/admin-panel" element={user?.role === 'admin' ? <Analytics /> : <Navigate to="/" />} />
             <Route path="/analytics" element={user?.role === 'admin' ? <Analytics /> : <Navigate to="/" />} />
+            
             <Route path="/dashboard" element={user?.role === 'creator' ? <Dashboard /> : <Navigate to="/profile" />} />
             <Route path="/upload" element={user?.role === 'creator' ? <UploadArt /> : <Navigate to="/profile" />} />
             <Route path="/orders" element={user ? <Orders /> : <Navigate to="/login" />} />

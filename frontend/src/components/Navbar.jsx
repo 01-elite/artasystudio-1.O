@@ -29,7 +29,7 @@ const Navbar = ({ user, role, onLogout }) => {
   }, []);
 
   const handleSwitchProfile = () => {
-    if (role === 'admin') return; // Admin cannot switch
+    if (role === 'admin') return; 
     const storedUser = JSON.parse(localStorage.getItem('user'));
     if (!storedUser) return;
     const newRole = storedUser.role === 'creator' ? 'user' : 'creator';
@@ -39,17 +39,37 @@ const Navbar = ({ user, role, onLogout }) => {
     window.location.reload(); 
   };
 
-  // Menu Items Logic
+  // --- MENU ITEMS LOGIC (FIXED PATHS) ---
   const menuItems = [
-    { label: 'Admin Panel', icon: <ShieldAlert size={18}/>, path: '/admin-panel', show: role === 'admin' },
-    { label: 'View Profile', icon: <UserCircle size={18}/>, path: '/profile', show: !!user && role !== 'admin' },
-    { label: 'My Orders', icon: <Package size={18}/>, path: '/orders', show: !!user && role !== 'admin' },
-    { label: 'View Dashboard', icon: <LayoutDashboard size={18}/>, path: '/dashboard', show: role === 'creator' },
+    { 
+      label: 'Admin Panel', 
+      icon: <ShieldAlert size={18}/>, 
+      path: '/analytics', // 👈 YAHAN FIX KIYA HAI: Ab ye naye Analytics Dashboard par jayega
+      show: role === 'admin' 
+    },
+    { 
+      label: 'View Profile', 
+      icon: <UserCircle size={18}/>, 
+      path: '/profile', 
+      show: !!user && role !== 'admin' 
+    },
+    { 
+      label: 'My Orders', 
+      icon: <Package size={18}/>, 
+      path: '/orders', 
+      show: !!user && role !== 'admin' 
+    },
+    { 
+      label: 'Creator Dashboard', 
+      icon: <LayoutDashboard size={18}/>, 
+      path: '/analytics', 
+      show: role === 'creator' 
+    },
     { 
       label: `Switch to ${role === 'creator' ? 'User' : 'Creator'}`, 
       icon: <Repeat size={18}/>, 
       path: null, 
-      show: !!user && role !== 'admin', // Hide switch for Admin
+      show: !!user && role !== 'admin', 
       action: handleSwitchProfile 
     },
   ];
@@ -60,7 +80,7 @@ const Navbar = ({ user, role, onLogout }) => {
         ART<span className="text-[#FF8C00]">VISTA</span>
       </Link>
 
-      <div className="flex items-center gap-8 font-bold text-xs text-gray-400 uppercase tracking-widest">
+      <div className="flex items-center gap-8 font-bold text-xs text-gray-400 uppercase tracking-widest text-left">
         <Link to="/" className="hover:text-[#FF8C00] transition">Explore</Link>
         {role === 'creator' && (
           <Link to="/upload" className="flex items-center gap-1 text-[#FF8C00]">
@@ -91,9 +111,9 @@ const Navbar = ({ user, role, onLogout }) => {
 
           {isOpen && (
             <div className="absolute right-0 mt-4 w-60 bg-white border border-gray-100 rounded-[2rem] shadow-2xl py-4 z-[100] overflow-hidden">
-              <div className="px-6 py-2 mb-2 border-b border-gray-50">
+              <div className="px-6 py-2 mb-2 border-b border-gray-50 text-left">
                 <p className="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em]">
-                  {role === 'admin' ? 'Admin Menu' : 'Studio Menu'}
+                  {role === 'admin' ? 'Admin Terminal' : 'Studio Menu'}
                 </p>
               </div>
 
@@ -104,7 +124,7 @@ const Navbar = ({ user, role, onLogout }) => {
                     if (item.action) item.action();
                     else { navigate(item.path); setIsOpen(false); }
                   }}
-                  className="w-full flex items-center gap-4 px-6 py-3.5 text-sm font-bold text-gray-600 hover:bg-orange-50 hover:text-[#FF8C00] transition-all"
+                  className="w-full flex items-center gap-4 px-6 py-3.5 text-sm font-bold text-gray-600 hover:bg-orange-50 hover:text-[#FF8C00] transition-all text-left"
                 >
                   <span className="opacity-70">{item.icon}</span> {item.label}
                 </button>
@@ -115,13 +135,13 @@ const Navbar = ({ user, role, onLogout }) => {
               {user ? (
                 <button 
                   onClick={() => { onLogout(); setIsOpen(false); }}
-                  className="w-full flex items-center gap-4 px-6 py-3.5 text-sm font-bold text-red-500 hover:bg-red-50 transition-all"
+                  className="w-full flex items-center gap-4 px-6 py-3.5 text-sm font-bold text-red-500 hover:bg-red-50 transition-all text-left"
                 >
                   <LogOut size={18}/> Logout
                 </button>
               ) : (
                 <div className="space-y-1">
-                  <Link to="/login" onClick={() => setIsOpen(false)} className="flex items-center gap-4 px-6 py-3.5 text-sm font-bold text-gray-600">
+                  <Link to="/login" onClick={() => setIsOpen(false)} className="flex items-center gap-4 px-6 py-3.5 text-sm font-bold text-gray-600 text-left">
                     <LogIn size={18}/> Sign In
                   </Link>
                 </div>

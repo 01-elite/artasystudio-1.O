@@ -1,8 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const { getAdminStats, banUser } = require('../controller/adminController');
+const adminController = require('../controller/adminController');
 
-router.get('/stats', getAdminStats);
-router.delete('/user/:id', banUser); // New delete route
+router.get('/stats', adminController.getAdminStats);
+router.delete('/user/:id', adminController.banUser); 
 
 module.exports = router;
